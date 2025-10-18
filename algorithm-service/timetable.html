@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Timetable Viewer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>📅 Weekly Timetable</h1>
+  <div id="tables"></div>
+
+  <script>
+  async function loadTimetable() {
+      const res = await fetch("timetable.json");
+      const data = await res.json();
+
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const sections = [...new Set(data.map(d => d.section))];
+      const slotTimes = ["09-10","10-11","11-12","12-1","1-2","2-3"];
+      
+      const container = document.getElementById("tables");
+      sections.forEach(section => {
+          const table = document.createElement("table");
+          table.innerHTML = `<caption>${section}</caption><thead><tr><th>Time</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead>`;
+          
+          const body = document.createElement("tbody");
+          for (let i=1;i<=6;i++) {
+              const row = document.createElement("tr");
+              row.innerHTML = `<td>${slotTimes[i-1]}</td>` + days.map(day => {
+                  const match = data.find(d => d.section===section && d.time_slot===`${day}-${i}`);
+                  return `<td>${match ? `<b>${match.subject}</b><br>${match.faculty}<br>${match.room}` : ""}</td>`;
+              }).join('');
+              body.appendChild(row);
+          }
+          table.appendChild(body);
+          container.appendChild(table);
+      });
+  }
+  loadTimetable();
+  </script>
+</body>
+</html>

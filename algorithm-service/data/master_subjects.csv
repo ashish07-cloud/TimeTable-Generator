@@ -1,0 +1,4 @@
+subject_code,subject_name,course_id,semester,nep_category,hours_per_week,room_type_required
+CS-DSC-05,"Data Structures and Algorithms",UOD-BTECH-CSE,3,Major,5,Lecture
+CS-DSC-06,"Data Structures Lab",UOD-BTECH-CSE,3,Major,4,Lab
+CS-DSC-07,"Discrete Mathematics",UOD-BTECH-CSE,3,Major,5,Lecture
