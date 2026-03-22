@@ -1,8 +1,32 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const timetableController = require('../../controllers/timetableController');
+const orchestrator = require("../services/timetableOrchestrator");
 
-// Define the POST endpoint for generation
-router.post('/generate', timetableController.generateAndSave);
+router.post("/generate", async (req, res) => {
+  try {
+    const result = await orchestrator.generateTimetable(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/validate", async (req, res) => {
+  try {
+    const result = await orchestrator.validateChange(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/save", async (req, res) => {
+  const { timetable } = req.body;
+
+  // store in DB (JSON for now)
+  const saved = await db.saveTimetable(timetable);
+
+  res.json(saved);
+});
 
 module.exports = router;

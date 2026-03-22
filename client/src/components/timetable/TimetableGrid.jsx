@@ -1,44 +1,32 @@
-import React from 'react';
-
 const TimetableGrid = ({ timetableData }) => {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-  const slots = [1, 2, 3, 4, 5, 6, 7, 8];
-
-  const theme = {
-    bg: "bg-white dark:bg-black",
-    text: "text-gray-900 dark:text-white",
-    card: "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
-    accentGreen: "from-green-500 to-green-700 text-white"
-  };
+  const slots = [1, 2, 3, 4, 5, 6, 7];
 
   return (
-    <div className={`w-full overflow-x-auto rounded-xl border p-4 ${theme.bg} ${theme.card}`}>
-      <table className="w-full min-w-[800px] border-collapse">
+    <div className="overflow-x-auto">
+      <table className="min-w-full border-collapse border border-gray-300">
         <thead>
-          <tr className="border-b border-gray-200 dark:border-gray-700">
-            <th className={`p-4 text-left ${theme.text}`}>Slot / Day</th>
-            {days.map(day => <th key={day} className={`p-4 text-center ${theme.text}`}>{day}</th>)}
+          <tr>
+            <th className="border p-2">Time</th>
+            {days.map(day => <th key={day} className="border p-2">{day}</th>)}
           </tr>
         </thead>
         <tbody>
           {slots.map(slot => (
-            <tr key={slot} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-              <td className="p-4 font-bold text-green-600">Slot {slot}</td>
+            <tr key={slot}>
+              <td className="border p-2 font-bold">Period {slot}</td>
               {days.map(day => {
-                const entry = timetableData.find(i => i.day === day && i.slot === slot);
+                // Find the assignment for this specific Day and Slot
+                const entry = timetableData.find(e => e.day === day && e.slot === slot);
                 return (
-                  <td key={`${day}-${slot}`} className="p-2">
+                  <td key={day + slot} className="border p-4 h-24 w-40 bg-blue-50">
                     {entry ? (
-                      <div className={`rounded-lg bg-gradient-to-br p-3 shadow-md ${theme.accentGreen}`}>
-                        <div className="text-xs font-bold opacity-80">{entry.subjectCode}</div>
-                        <div className="text-sm font-semibold truncate">{entry.subjectName}</div>
-                        <div className="mt-2 flex justify-between text-[10px] font-medium uppercase">
-                          <span>📍 {entry.room}</span>
-                          <span>👤 {entry.faculty.split(' ')[0]}</span>
-                        </div>
+                      <div>
+                        <p className="font-bold text-blue-800">{entry.subjectId}</p>
+                        <p className="text-xs text-gray-600">Room: {entry.room}</p>
                       </div>
                     ) : (
-                      <div className="h-16 rounded-lg border-2 border-dashed border-gray-100 dark:border-gray-800" />
+                      <span className="text-gray-300">Free</span>
                     )}
                   </td>
                 );
@@ -50,5 +38,3 @@ const TimetableGrid = ({ timetableData }) => {
     </div>
   );
 };
-
-export default TimetableGrid;

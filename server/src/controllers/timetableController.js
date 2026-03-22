@@ -1,32 +1,15 @@
 const orchestrator = require('../services/timetableOrchestrator');
 
-exports.generateAndSave = async (req, res) => {
+exports.triggerGeneration = async (req, res) => {
     try {
-        const { courseId, semester } = req.body;
+        // 1. Gather all data from DB (Faculty, Rooms, etc.)
+        // const faculty = await Faculty.find(); ...
         
-        // 1. Validate Input
-        if (!courseId || !semester) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Please select both Course and Semester." 
-            });
-        }
-
-        // 2. Trigger Orchestrator (Which calls Python)
-        console.log(`[Backend] Generating for ${courseId} Sem ${semester}...`);
-        const timetable = await orchestrator.generateTimetable(courseId, semester);
+        const inputData = req.body; // For now, taking from body for testing
+        const result = await orchestrator.generateTimetable(inputData);
         
-        // 3. Return the result to Frontend
-        res.status(200).json({
-            success: true,
-            data: timetable
-        });
-
+        res.status(200).json(result);
     } catch (error) {
-        console.error("[Backend Error]:", error.message);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message || "An error occurred during AI generation." 
-        });
+        res.status(500).json({ status: 'error', message: error.message });
     }
 };

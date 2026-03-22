@@ -1,7 +1,0 @@
-room_id,room_name,capacity,room_type
-L-101,Main Lecture Hall,100,Lecture
-L-102,Auditorium Block,120,Lecture
-L-201,Second Floor Classroom A,60,Lecture
-L-202,Second Floor Classroom B,60,Lecture
-CS-LAB-1,Computer Science Lab 1,25,Lab
-CS-LAB-2,Computer Science Lab 2,25,Lab
