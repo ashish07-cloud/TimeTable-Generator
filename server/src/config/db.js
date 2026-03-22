@@ -1,19 +1,38 @@
-import pkg from 'pg';
-import dotenv from 'dotenv';
+const { Sequelize } = require('sequelize');
+const logger = require('../utils/logger');
 
-dotenv.config();
-const { Pool } = pkg;
+const sequelize = new Sequelize(
+    process.env.PG_DATABASE, // matches PG_DATABASE
+    process.env.PG_USER,     // matches PG_USER
+    process.env.PG_PASSWORD, // matches PG_PASSWORD
+    {
+        host: process.env.PG_HOST,
+        port: process.env.PG_PORT || 5433, // matches PG_PORT
+        dialect: 'postgres',
+        logging: false, // Set to console.log if you want to see SQL queries
+        pool: {
+            max: 10,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+        }
+    }
+);
 
-const pool = new Pool({
-  host: process.env.PG_HOST,
-  port: process.env.PG_PORT,
-  user: process.env.PG_USER,
-  password: process.env.PG_PASSWORD,
-  database: process.env.PG_DATABASE,
-});
+const connectDB = async () => {
+    try {
+        await sequelize.authenticate();
+        logger.info(`PostgreSQL Connected on port ${process.env.PG_PORT}`);
 
-pool.connect()
-  .then(() => console.log('✅ PostgreSQL Connected Successfully'))
-  .catch(err => console.error('❌ PostgreSQL Connection Error:', err));
+        if (process.env.NODE_ENV === 'development') {
+            // This creates tables automatically based on your models
+            await sequelize.sync({ alter: true });
+            logger.info('Database models synchronized.');
+        }
+    } catch (error) {
+        logger.error('Database Connection Failed:', error.message);
+        process.exit(1);
+    }
+};
 
-export default pool;
+module.exports = { sequelize, connectDB };

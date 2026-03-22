@@ -19,3 +19,8 @@
 2026-03-22 15:39:26,826 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
 2026-03-22 15:39:26,828 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=105.16ms
 2026-03-22 15:41:07,504 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-22 15:41:07,630 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-22 15:41:12,038 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-22 15:41:12,038 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-22 15:41:12,069 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-22 15:41:12,070 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=39.54ms
