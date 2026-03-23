@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 
-const { generateTimetable } = require('../controllers/timetable.controller');
+// test route
+router.get('/ping', (req, res) => {
+  res.send("PING ROUTER WORKING");
+});
 
-router.post('/generate', generateTimetable);
+// auth routes
+const authRoutes = require('./auth.routes');
+router.use('/auth', authRoutes);
 
 module.exports = router;

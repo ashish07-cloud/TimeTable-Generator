@@ -120,3 +120,6 @@
 2026-03-23 20:04:37,414 | INFO     | solver.core:_solve:42 - Starting solver...
 2026-03-23 20:04:37,487 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
 2026-03-23 20:04:37,489 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=95.68ms
+2026-03-23 23:48:13,954 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 23:48:15,304 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 23:48:15,467 | INFO     | root:setup_logging:45 - Production logging initialized successfully.

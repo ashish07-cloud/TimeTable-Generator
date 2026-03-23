@@ -1,4 +1,3 @@
-// client/src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -8,9 +7,7 @@ import Footer from "./components/common/Footer";
 
 // pages
 import Home from "./pages/public/Home";
-// import TimetableGenerator from './pages/public/TimetableGenerator';
 import RegisterPage from "./pages/public/RegisterPage";
-import VerifyOTPPage from "./pages/public/VerifyOTPPage";
 import LoginPage from "./pages/public/LoginPage";
 import RequireAuth from "./components/common/RequireAuth";
 import Dashboard from "./pages/admin/DashboardPage";
@@ -23,24 +20,22 @@ function App() {
           <Navbar />
           <main className="flex-1">
             <Routes>
+              {/* public routes */}
               <Route path="/" element={<Home />} />
-              {/* <Route path="/timetable" element={<TimetableGenerator/>} /> */}
-
-              {/* public auth pages */}
               <Route path="/register" element={<RegisterPage />} />
-              <Route path="/verify-otp" element={<VerifyOTPPage />} />
               <Route path="/login" element={<LoginPage />} />
 
+              {/* protected routes */}
               <Route
                 path="/admin/*"
                 element={
                   <RequireAuth>
-                    <Dashboard />{" "}
-                    {/* ← Replace placeholder with your real DashboardPage */}
+                    <Dashboard />
                   </RequireAuth>
                 }
               />
 
+              {/* fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
