@@ -113,3 +113,10 @@
 2026-03-23 13:47:03,848 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
 2026-03-23 13:47:03,849 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=28.12ms
 >>>>>>> Stashed changes
+2026-03-23 19:59:25,684 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 19:59:26,530 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 19:59:26,601 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 20:04:37,414 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 20:04:37,414 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 20:04:37,487 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 20:04:37,489 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=95.68ms
