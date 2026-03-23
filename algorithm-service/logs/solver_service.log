@@ -24,3 +24,92 @@
 2026-03-22 15:41:12,038 | INFO     | solver.core:_solve:42 - Starting solver...
 2026-03-22 15:41:12,069 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
 2026-03-22 15:41:12,070 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=39.54ms
+<<<<<<< Updated upstream
+=======
+2026-03-23 00:43:51,671 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 00:43:52,472 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 00:43:52,540 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 00:44:03,866 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 00:44:03,867 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 00:44:03,931 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 00:44:03,934 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=86.97ms
+2026-03-23 00:46:30,850 | INFO     | app:log_requests:45 - rid= method=GET path=/api/docs status_code=200 completed_in=0.54ms
+2026-03-23 00:46:31,022 | INFO     | app:log_requests:45 - rid= method=GET path=/openapi.json status_code=200 completed_in=69.84ms
+2026-03-23 00:47:34,340 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 00:47:34,340 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 00:47:34,359 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 00:47:34,361 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=27.43ms
+2026-03-23 10:52:50,044 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 10:52:50,936 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 10:52:51,021 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 10:58:19,449 | INFO     | app:log_requests:45 - rid= method=GET path=/api/docs status_code=200 completed_in=0.80ms
+2026-03-23 10:58:19,569 | INFO     | app:log_requests:45 - rid= method=GET path=/openapi.json status_code=200 completed_in=41.19ms
+2026-03-23 10:59:02,836 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 10:59:02,836 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 10:59:02,889 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 10:59:02,891 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=70.94ms
+2026-03-23 11:03:49,639 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 11:03:50,349 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 11:03:50,400 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 11:03:53,713 | INFO     | app:log_requests:45 - rid= method=GET path=/api/docs status_code=200 completed_in=0.39ms
+2026-03-23 11:03:53,844 | INFO     | app:log_requests:45 - rid= method=GET path=/openapi.json status_code=200 completed_in=30.97ms
+2026-03-23 11:04:47,619 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 11:04:47,619 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 11:04:47,644 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 11:04:47,645 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=31.32ms
+2026-03-23 11:05:23,546 | INFO     | app:log_requests:45 - rid= method=GET path=/api/v1/timetable/generate status_code=405 completed_in=0.27ms
+2026-03-23 11:05:23,593 | INFO     | app:log_requests:45 - rid= method=GET path=/favicon.ico status_code=404 completed_in=0.31ms
+2026-03-23 11:06:40,148 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/generate status_code=404 completed_in=0.21ms
+2026-03-23 11:06:44,859 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/generate status_code=404 completed_in=0.24ms
+2026-03-23 11:40:03,142 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 11:40:04,030 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 11:40:04,100 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 11:40:28,070 | INFO     | app:log_requests:45 - rid= method=GET path=/api/docs status_code=200 completed_in=0.47ms
+2026-03-23 11:40:28,201 | INFO     | app:log_requests:45 - rid= method=GET path=/openapi.json status_code=200 completed_in=34.12ms
+2026-03-23 11:40:54,655 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 11:40:54,655 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 11:40:54,687 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 11:40:54,688 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=38.12ms
+2026-03-23 12:56:43,782 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 12:56:44,480 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 12:56:44,536 | INFO     | root:setup_logging:45 - Production logging initialized successfully.
+2026-03-23 13:18:38,594 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable status_code=404 completed_in=0.35ms
+2026-03-23 13:25:26,573 | ERROR    | app:validation_exception_handler:69 - Schema Validation Error: [{'type': 'missing', 'loc': ('body', 'institution_id'), 'msg': 'Field required', 'input': {'subjects': []}}, {'type': 'missing', 'loc': ('body', 'courses'), 'msg': 'Field required', 'input': {'subjects': []}}, {'type': 'missing', 'loc': ('body', 'faculty'), 'msg': 'Field required', 'input': {'subjects': []}}, {'type': 'missing', 'loc': ('body', 'rooms'), 'msg': 'Field required', 'input': {'subjects': []}}, {'type': 'missing', 'loc': ('body', 'elective_groups'), 'msg': 'Field required', 'input': {'subjects': []}}, {'type': 'missing', 'loc': ('body', 'config'), 'msg': 'Field required', 'input': {'subjects': []}}]
+2026-03-23 13:25:26,573 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=400 completed_in=14.24ms
+2026-03-23 13:26:49,736 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:26:49,736 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:26:49,786 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:26:49,787 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=60.78ms
+2026-03-23 13:34:56,867 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:34:56,867 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:34:56,876 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:34:56,877 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=13.10ms
+2026-03-23 13:35:05,715 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:35:05,715 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:35:05,725 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:35:05,726 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=24.75ms
+2026-03-23 13:35:13,721 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:35:13,721 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:35:13,740 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:35:13,741 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=24.81ms
+2026-03-23 13:35:16,509 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:35:16,509 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:35:16,519 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:35:16,520 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=14.78ms
+2026-03-23 13:35:58,152 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:35:58,152 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:35:58,171 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:35:58,171 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=23.54ms
+2026-03-23 13:37:17,345 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:37:17,345 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:37:17,367 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:37:17,368 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=26.29ms
+2026-03-23 13:46:29,713 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:46:29,713 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:46:29,725 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:46:29,726 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=16.65ms
+2026-03-23 13:47:03,824 | INFO     | solver.core:_build:36 - Model built with 48 decision variables.
+2026-03-23 13:47:03,824 | INFO     | solver.core:_solve:42 - Starting solver...
+2026-03-23 13:47:03,848 | INFO     | solver.core:generate_timetable:96 - Solver finished with status: CpSolverStatus.OPTIMAL
+2026-03-23 13:47:03,849 | INFO     | app:log_requests:45 - rid= method=POST path=/api/v1/timetable/generate status_code=201 completed_in=28.12ms
+>>>>>>> Stashed changes
