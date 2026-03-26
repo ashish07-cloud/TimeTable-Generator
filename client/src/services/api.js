@@ -1,70 +1,88 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+// 🔥 AXIOS INSTANCE
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // 60 seconds
+  timeout: 60000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// Request interceptor
+
+// 🔹 REQUEST INTERCEPTOR (ADD TOKEN)
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    console.log(
+      `API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
+    );
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor
+
+// 🔹 RESPONSE INTERCEPTOR (HANDLE 401 PROPERLY)
 api.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`);
+    console.log(
+      `API Response: ${response.status} ${response.config.url}`
+    );
     return response;
   },
   (error) => {
-    console.error('API Error:', error.message);
+    console.error("API Error:", error.response?.data || error.message);
+
+    // 🔥 HANDLE UNAUTHORIZED
+    if (error.response?.status === 401) {
+      console.warn("Unauthorized → clearing token");
+
+      localStorage.removeItem("token");
+
+      // Optional: redirect to login
+      window.location.href = "/login";
+    }
+
     return Promise.reject(error);
   }
 );
 
+
+// 🔹 TIMETABLE API (unchanged but cleaned)
 export const timetableAPI = {
-  // Health check
   checkHealth: async () => {
-    const response = await api.get('/health');
-    return response.data;
+    const res = await api.get("/health");
+    return res.data;
   },
 
-  // Check Python service
   checkPythonService: async () => {
-    const response = await api.get('/check-python');
-    return response.data;
+    const res = await api.get("/check-python");
+    return res.data;
   },
 
-  // Generate timetable
   generateTimetable: async (data) => {
-    const response = await api.post('/generate-timetable', data);
-    return response.data;
+    const res = await api.post("/generate-timetable", data);
+    return res.data;
   },
 
-  // Get already generated timetable
-   getTimetable: async () => {
-    const response = await fetch('http://localhost:5000/get-timetable');
-    if (!response.ok) throw new Error('Failed to fetch timetable');
-    return response.json();
+  getTimetable: async () => {
+    const res = await api.get("/timetable");
+    return res.data;
   },
 
-  // Validate data
   validateData: async (data) => {
-    const response = await api.post('/validate-data', data);
-    return response.data;
+    const res = await api.post("/validate-data", data);
+    return res.data;
   },
 };
-
 
 export default api;

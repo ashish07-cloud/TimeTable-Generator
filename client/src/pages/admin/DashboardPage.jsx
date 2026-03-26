@@ -77,6 +77,12 @@ export default function AdminDashboardPage() {
               >
                 <Plus size={16} /> New Timetable
               </button>
+              <button
+                onClick={() => navigate("/admin/setup")}
+                className="w-full px-3 py-2 rounded-lg bg-blue-600 text-white"
+              >
+                Setup Data
+              </button>
             </div>
           </div>
 

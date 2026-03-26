@@ -26,11 +26,11 @@ export default function LoginPage() {
       const res = await apiLogin(form);
 
       // Backend returns user object in res.data.user
-      const user = res.data.user || null;
+      const{user, token} =  res.data;
 
-      if (user) {
+      if (user && token) {
         // 4. CALL the context function to set the user in global state
-        setAuthUser(user);
+        setAuthUser({user, token});
         navigate('/admin/dashboard'); // change to your admin route
       } else {
         setErr(res.data.message || 'Login success but no user returned');

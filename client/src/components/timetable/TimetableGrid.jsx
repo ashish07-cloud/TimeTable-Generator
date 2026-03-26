@@ -1,6 +1,6 @@
 const TimetableGrid = ({ timetableData }) => {
-  const days = ["Mon", "Tue", "Wed"];
-  const slots = [1, 2, 3, 4];
+  const days = ["Mon", "Tue", "Wed", "Thru", "Fri", "Sat"];
+  const slots = [1, 2, 3, 4, 5, 6, 7];
 
   return (
     <div className="overflow-x-auto">

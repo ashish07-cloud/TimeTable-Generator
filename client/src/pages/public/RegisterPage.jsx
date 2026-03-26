@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { register } from "../../api/authService";
+import { useAuth } from "../../context/AuthContext";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -12,22 +13,24 @@ export default function RegisterPage() {
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
+  const { login: setAuthUser } = useAuth();
   const onChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setErr(null);
-    setMsg(null);
     setLoading(true);
 
     try {
       const res = await register(form);
 
-      setMsg(res.data.message || "Registration successful");
+      const { user, token } = res.data;
 
-      // ✅ go directly to login
-      navigate("/login");
+      if (user && token) {
+        setAuthUser({ user, token });
+        navigate("/admin/dashboard");
+      }
     } catch (error) {
       setErr(
         error?.response?.data?.message ||

@@ -1,46 +1,93 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
-import Navbar from "./components/common/Navbar";
-import Footer from "./components/common/Footer";
 
-// pages
-import Home from "./pages/public/Home";
-import RegisterPage from "./pages/public/RegisterPage";
-import LoginPage from "./pages/public/LoginPage";
+// Components
 import RequireAuth from "./components/common/RequireAuth";
-import Dashboard from "./pages/admin/DashboardPage";
+import PublicLayout from "./components/common/PublicLayout";
+import AdminLayout from "./components/common/AdminLayout";
+import LoadingScreen from "./components/common/LoadingScreen";
+
+// Public Pages
+import Home from "./pages/public/Home";
+import LoginPage from "./pages/public/LoginPage";
+import RegisterPage from "./pages/public/RegisterPage";
+
+// Admin Pages (Lazy)
+const Dashboard = lazy(() => import("./pages/admin/DashboardPage"));
+const OnboardingWizard = lazy(() => import("./pages/admin/OnboardingWizard"));
+const GenerateTimetable = lazy(() => import("./pages/admin/GenerateTimetable"));
+const TimetableEditor = lazy(() => import("./pages/admin/TimetableEditor"));
+
+// 🔥 Setup Step Components
+const InstitutionalConfig = lazy(() =>
+  import("./components/admin/InstitutionalConfig")
+);
+const RoomManager = lazy(() =>
+  import("./components/admin/RoomManager")
+);
+const SubjectManager = lazy(() =>
+  import("./components/admin/SubjectManager")
+);
+const FacultyManager = lazy(() =>
+  import("./components/admin/FacultyManager")
+);
+const EnrollmentManager = lazy(() =>
+  import("./components/admin/EnrollmentManager")
+);
 
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <div className="min-h-screen flex flex-col transition-colors duration-500">
-          <Navbar />
-          <main className="flex-1">
-            <Routes>
-              {/* public routes */}
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+
+            {/* PUBLIC DOMAIN */}
+            <Route element={<PublicLayout />}>
               <Route path="/" element={<Home />} />
-              <Route path="/register" element={<RegisterPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+            </Route>
 
-              {/* protected routes */}
-              <Route
-                path="/admin/*"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
+            {/* ADMIN DOMAIN */}
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth>
+                  <AdminLayout />
+                </RequireAuth>
+              }
+            >
+              {/* Dashboard */}
+              <Route index element={<Dashboard />} />
 
-              {/* fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
+              {/* 🔥 SETUP SYSTEM */}
+              <Route path="setup" element={<OnboardingWizard />}>
+                <Route index element={<Navigate to="institution" replace />} />
+                
+                <Route path="institution" element={<InstitutionalConfig />} />
+                <Route path="rooms" element={<RoomManager />} />
+                <Route path="subjects" element={<SubjectManager />} />
+                <Route path="faculty" element={<FacultyManager />} />
+                <Route path="enrollment" element={<EnrollmentManager />} />
+              </Route>
+
+              {/* TIMETABLE */}
+              <Route path="generate" element={<GenerateTimetable />} />
+              <Route path="edit/:id" element={<TimetableEditor />} />
+
+              {/* MANAGEMENT (future) */}
+              <Route path="faculty" element={<div>Faculty Management</div>} />
+              <Route path="rooms" element={<div>Room Management</div>} />
+            </Route>
+
+            {/* GLOBAL FALLBACK */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </ThemeProvider>
   );
