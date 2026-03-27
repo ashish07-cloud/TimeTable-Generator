@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
-import Navbar from "./Navbar"; // Import the new navbar
+import Navbar from "./Navbar";
 
 export default function AdminLayout() {
   const { isDark } = useTheme();
@@ -38,14 +38,20 @@ export default function AdminLayout() {
   // Get current page title
   const currentPage = navItems.find((item) => isActive(item.path))?.label || "Admin";
 
+  // Top offset to account for the fixed navbar (which is ~80px tall)
+  const topOffset = "80px";
+
   return (
     <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300">
       {/* Global Navbar */}
       <Navbar />
 
       <div className="flex">
-        {/* Sidebar - Fixed */}
-        <aside className="w-64 fixed top-[73px] bottom-0 left-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex flex-col transition-colors duration-300 z-10">
+        {/* Sidebar - Fixed, now with rounded top corner and adjusted top offset */}
+        <aside
+          className="w-64 fixed left-0 bottom-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex flex-col transition-all duration-300 z-10 shadow-sm"
+          style={{ top: topOffset }}
+        >
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
@@ -67,16 +73,18 @@ export default function AdminLayout() {
             })}
           </nav>
 
-          {/* Sidebar Footer (only decorative, no user info/logout) */}
+          {/* Sidebar Footer */}
           <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-500">
             <p>© {new Date().getFullYear()} AcadiaPlan</p>
             <p className="mt-1">v1.0.0</p>
           </div>
         </aside>
 
-        {/* Main Content Area - Offset by sidebar width and top bar height */}
-        <main className="flex-1 ml-64 mt-[73px]">
-          {/* Page Content */}
+        {/* Main Content - offset by navbar height and sidebar width */}
+        <main
+          className="flex-1 ml-64"
+          style={{ marginTop: topOffset }}
+        >
           <div className="p-6">
             <Outlet />
           </div>

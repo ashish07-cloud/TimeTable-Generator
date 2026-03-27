@@ -9,12 +9,13 @@ import {
   ChevronRight,
   CheckCircle,
   Upload,
-  FileSpreadsheet,
   Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import BulkUploadZone from "./BulkUploadZone";
 import dataService from "../../api/dataService";
+import * as XLSX from "xlsx"; // For template generation
 
 const ROOM_TYPES = [
   "LECTURE_HALL",
@@ -39,32 +40,23 @@ const RoomManager = () => {
     floor: "",
   });
 
-  // Expected headers for rooms CSV
-  const expectedHeaders = ["roomNumber", "capacity", "roomType", "building", "floor"];
-
-  // 🔥 Sync internal state with progress from backend
+  // --- 1. SYNC WITH DATABASE ---
   useEffect(() => {
     if (progress) {
       if (progress.rooms && progress.rooms.length > 0) {
         setRooms(progress.rooms.map((r, i) => ({ ...r, id: r.id || `db-${i}` })));
       }
-      // If we have passed this step (Step 3 or higher), lock it
       if (progress.step >= 3) {
         setIsLocked(true);
       }
     }
   }, [progress]);
 
+  // --- 2. MANUAL HANDLERS ---
   const handleAddRoom = () => {
     if (!newRoom.roomNumber || !newRoom.capacity) return;
     setRooms([...rooms, { ...newRoom, id: Date.now() }]);
-    setNewRoom({
-      roomNumber: "",
-      roomType: "LECTURE_HALL",
-      capacity: 60,
-      building: "",
-      floor: "",
-    });
+    setNewRoom({ roomNumber: "", roomType: "LECTURE_HALL", capacity: 60, building: "", floor: "" });
   };
 
   const removeRoom = (id) => {
@@ -72,57 +64,53 @@ const RoomManager = () => {
     setRooms(rooms.filter((r) => r.id !== id));
   };
 
+  // --- 3. BULK UPLOAD & TEMPLATE ---
   const handleBulkUpload = (data) => {
-    if (isLocked) return;
-
-    // Map uploaded data to our room format
-    const newRooms = data.map((row, index) => ({
+    const normalized = data.map((r, index) => ({
       id: Date.now() + index,
-      roomNumber: String(row.roomNumber || "").trim(),
-      roomType: row.roomType || "LECTURE_HALL",
-      capacity: parseInt(row.capacity) || 60,
-      building: row.building ? String(row.building).trim() : "",
-      floor: row.floor ? parseInt(row.floor) : null,
+      roomNumber: String(r.room_number || r.roomNumber || "").toUpperCase(),
+      // Ensure room type matches the ENUM exactly
+      roomType: String(r.room_type || r.roomType || "LECTURE_HALL").toUpperCase().replace(/\s+/g, "_"),
+      capacity: parseInt(r.capacity, 10) || 60,
+      building: r.building || "",
+      floor: r.floor ? parseInt(r.floor, 10) : null,
     }));
 
-    // Filter out empty or invalid rows
-    const valid = newRooms.filter(r => r.roomNumber && r.capacity);
-    if (valid.length === 0) {
-      alert("No valid rooms found in the uploaded file.");
-      return;
-    }
+    // Filter out duplicates (based on roomNumber)
+    const existingNumbers = new Set(rooms.map(r => r.roomNumber));
+    const uniqueNew = normalized.filter(r => !existingNumbers.has(r.roomNumber));
 
-    setRooms(prev => [...prev, ...valid]);
+    setRooms([...rooms, ...uniqueNew]);
+    setShowBulk(false);
   };
 
   const downloadTemplate = () => {
-    const template = [
+    const data = [
       {
-        roomNumber: "A101",
+        room_number: "A101",
+        room_type: "LECTURE_HALL",
         capacity: 60,
-        roomType: "LECTURE_HALL",
-        building: "Block A",
+        building: "Main Block",
         floor: 1,
       },
       {
-        roomNumber: "C201",
+        room_number: "L202",
+        room_type: "COMPUTER_LAB",
         capacity: 30,
-        roomType: "COMPUTER_LAB",
-        building: "Block C",
+        building: "Science Wing",
         floor: 2,
       },
     ];
-    const ws = XLSX.utils.json_to_sheet(template);
+    const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Rooms");
     XLSX.writeFile(wb, "rooms_template.xlsx");
   };
 
+  // --- 4. SMART SUBMIT ---
   const handleSubmit = async () => {
-    // 🔥 STRATEGY: If data is already in the DB, don't re-save, just move to Step 3.
     if (isLocked || (rooms.length > 0 && progress?.step >= 2)) {
-      console.log("Rooms already exist in DB. Moving to Subjects...");
-      await saveAndNext(); // This will trigger the route change to /subjects
+      await saveAndNext();
       return;
     }
 
@@ -131,32 +119,26 @@ const RoomManager = () => {
       return;
     }
 
-    // 🔥 CLEANING DATA STRICTLY
+    // STRICT DATA CLEANING
     const payload = rooms.map((r) => {
       const parsedFloor = parseInt(r.floor, 10);
       return {
         roomNumber: String(r.roomNumber).trim(),
-        capacity: parseInt(r.capacity, 10) || 60,
-        roomType: r.roomType,
+        capacity: parseInt(r.capacity, 10) || 60, 
+        roomType: r.roomType, 
         building: r.building ? String(r.building).trim() : null,
-        floor: isNaN(parsedFloor) ? null : parsedFloor,
+        floor: isNaN(parsedFloor) ? null : parsedFloor, 
       };
     });
-
-    console.log("Sending Room Payload:", payload);
 
     try {
       await saveAndNext(payload, dataService.saveRooms);
     } catch (err) {
       const errorMsg = err.response?.data?.message || "";
-      // 🔥 EMERGENCY BYPASS: If the error is about "Unique Constraint" or "Validation",
-      // it means the rooms are likely already there.
       if (errorMsg.toLowerCase().includes("unique") || errorMsg.includes("Validation error")) {
-        console.warn("Detected duplicate or validation error, but rooms exist. Proceeding...");
-        await saveAndNext();
+        await saveAndNext(); 
       } else {
-        console.error("Validation Details:", err.response?.data);
-        alert(`Save failed: ${errorMsg || "Check console"}`);
+        alert(`Save failed: ${errorMsg || "Validation Error"}`);
       }
     }
   };
@@ -173,123 +155,111 @@ const RoomManager = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-4 shadow-sm">
-          <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
-            <DoorOpen size={20} />
-          </div>
+          <div className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg"><DoorOpen size={20} /></div>
           <div>
             <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Rooms</p>
             <p className="text-xl font-bold dark:text-white">{rooms.length}</p>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-4 shadow-sm">
-          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
-            <Users size={20} />
-          </div>
+          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"><Users size={20} /></div>
           <div>
-            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Capacity</p>
-            <p className="text-xl font-bold dark:text-white">
-              {rooms.reduce((acc, r) => acc + parseInt(r.capacity || 0), 0)}
-            </p>
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Capacity</p>
+            <p className="text-xl font-bold dark:text-white">{rooms.reduce((acc, r) => acc + parseInt(r.capacity || 0), 0)}</p>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-4 shadow-sm">
-          <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
-            <Building2 size={20} />
-          </div>
+          <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg"><Building2 size={20} /></div>
           <div>
             <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Labs</p>
-            <p className="text-xl font-bold dark:text-white">
-              {rooms.filter((r) => r.roomType?.includes("LAB")).length}
-            </p>
+            <p className="text-xl font-bold dark:text-white">{rooms.filter(r => r.roomType?.includes("LAB")).length}</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* INPUT SIDEBAR */}
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm sticky top-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold dark:text-white flex items-center gap-2">
-                {showBulk ? <Upload size={18} className="text-orange-600" /> : <Plus size={18} className="text-orange-600" />}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold dark:text-white flex items-center gap-2 text-gray-900">
+                {showBulk ? <FileSpreadsheet size={18} className="text-orange-500" /> : <Plus size={18} className="text-orange-500" />}
                 {showBulk ? "Bulk Import" : "Manual Entry"}
               </h3>
               {!isLocked && (
                 <button
                   onClick={() => setShowBulk(!showBulk)}
-                  className="text-[10px] font-bold uppercase text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-lg"
+                  className="text-[10px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-md"
                 >
-                  {showBulk ? "Manual Entry" : "Excel Import"}
+                  {showBulk ? "Cancel" : "Use Excel"}
                 </button>
               )}
             </div>
-
-            {showBulk && !isLocked ? (
-              <div className="space-y-4">
-                <BulkUploadZone
-                  type="rooms"
-                  onUpload={handleBulkUpload}
-                  expectedHeaders={expectedHeaders}
-                />
-                <button
-                  onClick={downloadTemplate}
-                  className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
-                >
-                  <Download size={14} /> Download Template
-                </button>
-              </div>
-            ) : !isLocked ? (
-              <div className="space-y-4">
-                <input
-                  value={newRoom.roomNumber}
-                  onChange={(e) => setNewRoom({ ...newRoom, roomNumber: e.target.value })}
-                  placeholder="Room Number (e.g. A101)"
-                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
-                />
-                <select
-                  value={newRoom.roomType}
-                  onChange={(e) => setNewRoom({ ...newRoom, roomType: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-white"
-                >
-                  {ROOM_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t.replace("_", " ")}
-                    </option>
-                  ))}
-                </select>
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="number"
-                    value={newRoom.capacity}
-                    onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
-                    placeholder="Capacity"
-                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    value={newRoom.floor}
-                    onChange={(e) => setNewRoom({ ...newRoom, floor: e.target.value })}
-                    placeholder="Floor"
-                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <button
-                  onClick={handleAddRoom}
-                  className="w-full py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition-colors"
-                >
-                  Add Room
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 italic">Form is locked because rooms are already saved.</p>
+            
+            {!isLocked && (
+              <>
+                {showBulk ? (
+                  <div className="space-y-4">
+                    <BulkUploadZone 
+                      type="Rooms" 
+                      onUpload={handleBulkUpload} 
+                    />
+                    <button
+                      onClick={downloadTemplate}
+                      className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 text-[10px] font-bold uppercase rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-all"
+                    >
+                      <Download size={14} /> Download Template
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <input
+                      value={newRoom.roomNumber}
+                      onChange={(e) => setNewRoom({ ...newRoom, roomNumber: e.target.value.toUpperCase() })}
+                      placeholder="Room Number (e.g. A101)"
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    <select
+                      value={newRoom.roomType}
+                      onChange={(e) => setNewRoom({ ...newRoom, roomType: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
+                    >
+                      {ROOM_TYPES.map(t => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                    </select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <input
+                        type="number"
+                        value={newRoom.capacity}
+                        onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
+                        placeholder="Capacity"
+                        className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
+                      />
+                      <input
+                        type="number"
+                        value={newRoom.floor}
+                        onChange={(e) => setNewRoom({ ...newRoom, floor: e.target.value })}
+                        placeholder="Floor"
+                        className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <button onClick={handleAddRoom} className="w-full py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition-colors">
+                      Add to List
+                    </button>
+                  </div>
+                )}
+              </>
             )}
+            
+            {isLocked && <p className="text-sm text-gray-500 italic mt-4">Configuration is locked as data is already saved in the system.</p>}
           </div>
         </div>
 
+        {/* LIST SECTION */}
         <div className="lg:col-span-2 flex flex-col h-full">
           <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex-1">
-            <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
+             <div className="overflow-x-auto max-h-[550px] custom-scrollbar">
               <table className="w-full text-left">
-                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10 border-b border-gray-200 dark:border-gray-700">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10 border-b">
                   <tr className="text-[10px] uppercase text-gray-400 font-bold">
                     <th className="px-6 py-4">Room</th>
                     <th className="px-6 py-4">Type</th>
@@ -298,36 +268,37 @@ const RoomManager = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {rooms.map((room) => (
-                    <tr key={room.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                      <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-200">
-                        {room.roomNumber}
-                      </td>
-                      <td className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">
-                        {room.roomType?.replace("_", " ")}
-                      </td>
-                      <td className="px-6 py-4 text-center font-mono">{room.capacity}</td>
-                      <td className="px-6 py-4 text-right">
-                        {!isLocked && (
-                          <button
-                            onClick={() => removeRoom(room.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                  {rooms.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="px-6 py-12 text-center text-gray-400 italic text-sm">
+                        No rooms added. Use manual entry or Excel import.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    rooms.map((room) => (
+                      <tr key={room.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-200">{room.roomNumber}</td>
+                        <td className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase">{room.roomType?.replace("_", " ")}</td>
+                        <td className="px-6 py-4 text-center font-mono">{room.capacity}</td>
+                        <td className="px-6 py-4 text-right">
+                          {!isLocked && (
+                            <button onClick={() => removeRoom(room.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
           </div>
 
+          {/* Navigation */}
           <div className="flex justify-between items-center mt-8">
             <button
               onClick={() => handleNavigate("prev")}
-              className="px-6 py-3 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
+              className="px-6 py-3 rounded-lg border text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-2"
             >
               <ChevronLeft size={20} /> Back
             </button>
@@ -336,16 +307,10 @@ const RoomManager = () => {
               onClick={handleSubmit}
               disabled={isLoading || (rooms.length === 0 && !isLocked)}
               className={`px-8 py-3 rounded-lg font-bold transition-all flex items-center gap-2 shadow-md hover:shadow-lg ${
-                isLoading
-                  ? "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                  : "bg-gradient-to-r from-orange-500 to-orange-700 text-white"
+                isLoading ? "bg-gray-200 text-gray-500" : "bg-gradient-to-r from-orange-500 to-orange-700 text-white"
               }`}
             >
-              {isLoading
-                ? "Saving..."
-                : isLocked || rooms.length > 0
-                ? "Next: Subjects"
-                : "Save & Continue"}
+              {isLoading ? "Saving..." : (isLocked || rooms.length > 0) ? "Next: Subjects" : "Save & Continue"}
               <ChevronRight size={20} />
             </button>
           </div>
