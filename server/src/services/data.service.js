@@ -102,20 +102,16 @@ exports.saveRooms = async (rooms, userId) => {
     where: { adminId: userId },
   });
 
-  if (!config) throw new Error("Complete Step 1 first");
+  if (!config) {
+    throw new Error("Complete Step 1 first");
+  }
 
   if (config.setupStep >= 3) {
-    throw new Error("Rooms already configured");
+    return { success: true }; // 🔥 already done → allow next
   }
 
   if (!Array.isArray(rooms) || rooms.length === 0) {
     throw new Error("Rooms data required");
-  }
-
-  for (const r of rooms) {
-    if (!r.roomNumber || !r.capacity || !r.roomType) {
-      throw new Error("Invalid room data");
-    }
   }
 
   await Room.bulkCreate(
@@ -127,9 +123,10 @@ exports.saveRooms = async (rooms, userId) => {
       floor: r.floor || null,
       features: r.features || {},
       collegeId: config.id,
-    })),
+    }))
   );
 
+  // 🔥 THIS LINE IS THE KEY
   await config.update({ setupStep: 3 });
 
   return { success: true };

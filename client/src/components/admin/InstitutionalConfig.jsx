@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Clock, Calendar, ChevronRight } from "lucide-react";
+import { Calendar, ChevronRight, CheckCircle } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
 import dataService from "../../api/dataService";
-import { useOnboarding } from "../../hooks/useOnboarding";
 
 const InstitutionalConfig = () => {
-  const { goToNextStep, isLoading } = useOnboarding();
+  // 🔥 Consume shared state and logic from OnboardingWizard
+  const { progress, saveAndNext, isLoading } = useOutletContext();
 
   const [formData, setFormData] = useState({
     collegeName: "",
@@ -44,50 +45,30 @@ const InstitutionalConfig = () => {
     "BCA",
   ];
 
-  // 🔥 PREFILL + LOCK
+  // 🔥 PREFILL Logic: When progress is loaded from parent, sync internal form
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const res = await dataService.getProgress();
+    if (progress?.institution) {
+      const inst = progress.institution;
 
-        if (res?.data?.institution) {
-          const inst = res.data.institution;
+      setFormData({
+        collegeName: inst.collegeName || "",
+        workingDays: inst.workingDays || [],
+        startTime: inst.startTime || "09:00",
+        endTime: inst.endTime || "17:00",
+        periodDuration: inst.periodDuration || 60,
+        windows: inst.slotWindows || formData.windows,
+        courses: progress.courses?.map((c) => c.name) || [],
+      });
 
-          setFormData((prev) => ({
-            ...prev,
-            collegeName: inst.collegeName || "",
-            workingDays: inst.workingDays || [],
-            startTime: inst.startTime || "09:00",
-            endTime: inst.endTime || "17:00",
-            periodDuration: inst.periodDuration || 60,
-            windows: inst.slotWindows || prev.windows,
-            courses: res.data.courses?.map((c) => c.name) || [], // 🔥 ADD THIS
-          }));
-
-          if (res.data.step >= 2) {
-            setIsLocked(true);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load institution data");
+      // If the backend says the institution is already set (step >= 2), lock the fields
+      if (progress.step >= 2) {
+        setIsLocked(true);
       }
-    };
+    }
+  }, [progress]);
 
-    loadData();
-  }, []);
-
-  useEffect(() => {
-  const load = async () => {
-    const res = await dataService.getInstitution();
-    if (res.data) setForm(res.data);
-  };
-  load();
-}, []);
-
-  // 🔹 Toggle Day
   const toggleDay = (day) => {
     if (isLocked) return;
-
     setFormData((prev) => ({
       ...prev,
       workingDays: prev.workingDays.includes(day)
@@ -96,10 +77,8 @@ const InstitutionalConfig = () => {
     }));
   };
 
-  // 🔹 Toggle Course
   const toggleCourse = (course) => {
     if (isLocked) return;
-
     setFormData((prev) => ({
       ...prev,
       courses: prev.courses.includes(course)
@@ -108,11 +87,12 @@ const InstitutionalConfig = () => {
     }));
   };
 
-  // 🔹 SUBMIT
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (isLocked) {
-      console.warn("Step already completed");
+      // If data is already saved, simply move to the next URL
+      await saveAndNext();
       return;
     }
 
@@ -126,24 +106,27 @@ const InstitutionalConfig = () => {
       courses: formData.courses,
     };
 
-    goToNextStep(payload, dataService.saveInstitutionConfig);
+    // Save and move to "rooms" route automatically
+    await saveAndNext(payload, dataService.saveInstitutionConfig);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 🔒 LOCK MESSAGE */}
+    <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in duration-500">
+      {/* 🔒 STATUS MESSAGE */}
       {isLocked && (
-        <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl">
-          Institution already configured. Proceed to next step.
+        <div className="flex items-center gap-2 p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400">
+          <CheckCircle size={18} />
+          <span className="text-sm font-medium">
+            Institutional structure confirmed. You can now proceed to Rooms.
+          </span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* LEFT */}
-        <div className="md:col-span-2 space-y-6">
-          {/* College Name */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200">
-            <label className="block text-sm font-medium text-gray-600 mb-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          {/* College Name Card */}
+          <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               College Name
             </label>
             <input
@@ -153,27 +136,26 @@ const InstitutionalConfig = () => {
               onChange={(e) =>
                 setFormData({ ...formData, collegeName: e.target.value })
               }
-              className="w-full px-4 py-2 border rounded-xl"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
               required
             />
           </div>
 
-          {/* Courses Offered */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Courses Offered</h3>
-
-            <div className="flex flex-wrap gap-2">
+          {/* Courses Offered Card */}
+          <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Courses Offered</h3>
+            <div className="flex flex-wrap gap-3">
               {courseOptions.map((course) => (
                 <button
                   key={course}
                   type="button"
                   disabled={isLocked}
                   onClick={() => toggleCourse(course)}
-                  className={`px-4 py-2 rounded-xl text-sm transition ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     formData.courses.includes(course)
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
+                      ? "bg-orange-500 text-white shadow-md"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
+                  } disabled:opacity-50`}
                 >
                   {course}
                 </button>
@@ -181,25 +163,24 @@ const InstitutionalConfig = () => {
             </div>
           </div>
 
-          {/* Working Days */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Calendar className="text-green-600" size={20} />
+          {/* Working Days Card */}
+          <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+              <Calendar size={20} className="text-orange-500" />
               Working Days
             </h3>
-
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {days.map((day) => (
                 <button
                   key={day}
                   type="button"
                   disabled={isLocked}
                   onClick={() => toggleDay(day)}
-                  className={`px-4 py-2 rounded-xl text-sm ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     formData.workingDays.includes(day)
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100"
-                  }`}
+                      ? "bg-orange-500 text-white shadow-md"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
+                  } disabled:opacity-50`}
                 >
                   {day}
                 </button>
@@ -207,132 +188,115 @@ const InstitutionalConfig = () => {
             </div>
           </div>
 
-          {/* Timing */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div>
-              <label className="text-sm text-gray-500">Start Time</label>
-              <input
-                type="time"
-                value={formData.startTime}
-                disabled={isLocked}
-                onChange={(e) =>
-                  setFormData({ ...formData, startTime: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded-xl"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500">End Time</label>
-              <input
-                type="time"
-                value={formData.endTime}
-                disabled={isLocked}
-                onChange={(e) =>
-                  setFormData({ ...formData, endTime: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded-xl"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500">Duration</label>
-              <select
-                value={formData.periodDuration}
-                disabled={isLocked}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    periodDuration: parseInt(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-2 border rounded-xl"
-              >
-                <option value={45}>45</option>
-                <option value={60}>60</option>
-                <option value={90}>90</option>
-              </select>
+          {/* Timing Card */}
+          <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Time</label>
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  disabled={isLocked}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Time</label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  disabled={isLocked}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Duration</label>
+                <select
+                  value={formData.periodDuration}
+                  disabled={isLocked}
+                  onChange={(e) => setFormData({ ...formData, periodDuration: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                >
+                  <option value={45}>45 minutes</option>
+                  <option value={60}>60 minutes</option>
+                  <option value={90}>90 minutes</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* RIGHT - WINDOWS */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">NEP Windows</h3>
-
-            {["GE", "SEC", "AEC", "VAC"].map((type) => (
-              <div key={type} className="mb-4">
-                <div className="flex justify-between mb-2">
-                  <span>{type}</span>
-                  <input
-                    type="checkbox"
-                    checked={formData.windows[type].active}
-                    disabled={isLocked}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        windows: {
-                          ...formData.windows,
-                          [type]: {
-                            ...formData.windows[type],
-                            active: e.target.checked,
-                          },
-                        },
-                      })
-                    }
-                  />
+        {/* Sidebar */}
+        <div className="space-y-8">
+          <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">NEP Windows</h3>
+            <div className="space-y-5">
+              {["GE", "SEC", "AEC", "VAC"].map((type) => (
+                <div key={type} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{type}</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.windows[type].active}
+                        disabled={isLocked}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            windows: {
+                              ...formData.windows,
+                              [type]: { ...formData.windows[type], active: e.target.checked },
+                            },
+                          })
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="time"
+                      value={formData.windows[type].start}
+                      disabled={isLocked || !formData.windows[type].active}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          windows: { ...formData.windows, [type]: { ...formData.windows[type], start: e.target.value } },
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                    />
+                    <input
+                      type="time"
+                      value={formData.windows[type].end}
+                      disabled={isLocked || !formData.windows[type].active}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          windows: { ...formData.windows, [type]: { ...formData.windows[type], end: e.target.value } },
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="time"
-                    value={formData.windows[type].start}
-                    disabled={isLocked}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        windows: {
-                          ...formData.windows,
-                          [type]: {
-                            ...formData.windows[type],
-                            start: e.target.value,
-                          },
-                        },
-                      })
-                    }
-                    className="w-full border px-2 py-1 rounded"
-                  />
-                  <input
-                    type="time"
-                    value={formData.windows[type].end}
-                    disabled={isLocked}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        windows: {
-                          ...formData.windows,
-                          [type]: {
-                            ...formData.windows[type],
-                            end: e.target.value,
-                          },
-                        },
-                      })
-                    }
-                    className="w-full border px-2 py-1 rounded"
-                  />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          {/* SUBMIT */}
           <button
             type="submit"
-            disabled={isLoading || isLocked}
-            className="w-full py-3 bg-green-600 text-white rounded-xl flex items-center justify-center gap-2"
+            disabled={isLoading}
+            className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg ${
+              isLoading
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-gradient-to-r from-orange-500 to-orange-700 text-white hover:from-orange-600 hover:to-orange-800"
+            }`}
           >
-            {isLocked ? "Completed" : isLoading ? "Saving..." : "Save & Next"}
+            {isLoading ? "Saving..." : isLocked ? "Next: Rooms" : "Save & Continue"}
             <ChevronRight size={18} />
           </button>
         </div>

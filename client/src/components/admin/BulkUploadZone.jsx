@@ -111,8 +111,8 @@ const BulkUploadZone = ({ type, onUpload, expectedHeaders }) => {
             flex flex-col items-center justify-center text-center space-y-4
             ${
               isDragging
-                ? "border-green-500 bg-green-50 dark:bg-green-900/10"
-                : "border-gray-200 dark:border-gray-800 hover:border-green-400 dark:hover:border-green-600 bg-gray-50/50 dark:bg-gray-900/50"
+                ? "border-orange-500 bg-orange-50 dark:bg-orange-900/10"
+                : "border-gray-200 dark:border-gray-800 hover:border-orange-400 dark:hover:border-orange-600 bg-gray-50/50 dark:bg-gray-900/50"
             }
           `}
         >
@@ -126,7 +126,7 @@ const BulkUploadZone = ({ type, onUpload, expectedHeaders }) => {
             }
           />
 
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-full shadow-sm text-green-600">
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-full shadow-sm text-orange-600">
             <Upload size={32} />
           </div>
 
@@ -144,30 +144,30 @@ const BulkUploadZone = ({ type, onUpload, expectedHeaders }) => {
               e.stopPropagation();
               downloadTemplate();
             }}
-            className="flex items-center gap-2 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-lg"
+            className="flex items-center gap-2 text-[10px] font-bold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg"
           >
             <Download size={12} /> Download Template
           </button>
 
           {loading && (
             <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 rounded-2xl flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
         </div>
       ) : (
         /* Preview / Confirm State */
-        <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900/50 rounded-2xl p-6 animate-in zoom-in-95 duration-200">
+        <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-6 animate-in zoom-in-95 duration-200">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-500 text-white rounded-xl">
+              <div className="p-3 bg-orange-500 text-white rounded-xl">
                 <FileSpreadsheet size={24} />
               </div>
               <div>
                 <p className="font-bold text-sm dark:text-white">
                   {fileData.name}
                 </p>
-                <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
                   {fileData.count} records found and validated.
                 </p>
               </div>
@@ -182,7 +182,7 @@ const BulkUploadZone = ({ type, onUpload, expectedHeaders }) => {
 
           <button
             onClick={handleConfirm}
-            className="w-full mt-6 py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-600/20"
+            className="w-full mt-6 py-3 bg-gradient-to-r from-orange-500 to-orange-700 text-white rounded-xl font-bold text-sm hover:from-orange-600 hover:to-orange-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20"
           >
             <CheckCircle2 size={18} /> Confirm & Import {fileData.count} {type}
           </button>

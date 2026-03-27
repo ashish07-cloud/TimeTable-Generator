@@ -4,18 +4,14 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  BookOpen,
   Sparkles,
-  LayoutGrid,
-  Info,
-  Search,
   Upload,
   Download,
   FileSpreadsheet,
-  X,
   CheckCircle2,
+  Info,
 } from "lucide-react";
-import { useOnboarding } from "../../hooks/useOnboarding";
+import { useOutletContext } from "react-router-dom"; // 🔥 Use context for smooth flow
 import dataService from "../../api/dataService";
 import * as XLSX from "xlsx";
 
@@ -29,7 +25,8 @@ const ROOM_TYPES = [
 ];
 
 const SubjectManager = () => {
-  const { goToNextStep, goToPrevStep, isLoading } = useOnboarding();
+  // 🔥 Get shared state and actions from OnboardingWizard
+  const { progress, saveAndNext, handleNavigate, isLoading } = useOutletContext();
   const fileInputRef = useRef(null);
 
   // --- STATE ---
@@ -39,6 +36,7 @@ const SubjectManager = () => {
   const [subjects, setSubjects] = useState([]);
   const [activeTab, setActiveTab] = useState("CORE");
   const [showBulk, setShowBulk] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // 🔥 Track if step is already completed
 
   // NEW STATE FOR ELECTIVES
   const [electivePool, setElectivePool] = useState([]);
@@ -54,29 +52,25 @@ const SubjectManager = () => {
     preferredRoom: "LECTURE_HALL",
   });
 
-  // --- 1. LOAD INITIAL DATA ---
+  // --- 1. SYNC WITH DATABASE PROGRESS ---
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const res = await dataService.getProgress();
-        setCourses(res.data.courses || []);
-      } catch (err) {
-        console.error("Failed to load courses", err);
-      }
-    };
-    loadInitialData();
-  }, []);
+    if (progress) {
+      // Load courses from config
+      setCourses(progress.courses || []);
 
-  useEffect(() => {
-  const load = async () => {
-    const res = await dataService.getSubjects();
-    setSubjects(res.data || []);
-  };
-  load();
-}, []);
+      // 🔥 PERSISTENCE: If subjects already exist in DB, load them into state
+      if (progress.subjects && progress.subjects.length > 0) {
+        setSubjects(progress.subjects);
+      }
+
+      // 🔥 LOCKING: If we've moved past this step (step >= 4), lock the UI
+      if (progress.step >= 4) {
+        setIsLocked(true);
+      }
+    }
+  }, [progress]);
 
   // --- 2. FETCH ELECTIVES (For GE, SEC, AEC, VAC) ---
-  // 🔥 STEP 2 FIX: Mapped masterSubjectId in pool fetch
   const fetchElectives = async (category) => {
     try {
       const res = await dataService.getElectives();
@@ -84,7 +78,7 @@ const SubjectManager = () => {
         .filter((s) => s.defaultCategory === category)
         .map((s) => ({
           ...s,
-          masterSubjectId: s.id, // 🔥 ADDED AS PER STEP 2
+          masterSubjectId: s.id,
         }));
       setElectivePool(filtered);
     } catch (err) {
@@ -142,7 +136,7 @@ const SubjectManager = () => {
 
       const mapped = json.map((row) => ({
         id: Date.now() + Math.random(),
-        masterSubjectId: null, // Note: Excel subjects will fail the new validation unless they are in master_subjects
+        masterSubjectId: row.masterSubjectId || null, 
         code: String(row.code || "").toUpperCase(),
         name: row.name,
         department: row.department || "General",
@@ -205,7 +199,7 @@ const SubjectManager = () => {
       ...subjects,
       {
         ...newSubject,
-        masterSubjectId: null, // This will be flagged by validation if submitted
+        masterSubjectId: null, 
         category: activeTab,
         id: Date.now(),
       },
@@ -215,11 +209,18 @@ const SubjectManager = () => {
   };
 
   const removeSubject = (id) => {
+    if (isLocked) return;
     setSubjects(subjects.filter((s) => s.id !== id));
   };
 
-  // --- 6. FINAL SUBMIT (WITH HARD VALIDATION) ---
+  // --- 6. SMART SUBMIT (SAVES TO DB OR MOVES NEXT) ---
   const handleSubmit = async () => {
+    // 🔥 FLOW: If already saved and verified by backend, just move next
+    if (isLocked) {
+      await saveAndNext();
+      return;
+    }
+
     if (!selectedCourse || !semester) {
       alert("Select course and semester");
       return;
@@ -230,15 +231,14 @@ const SubjectManager = () => {
       return;
     }
 
-    // 🔥 STEP 3 FIX: HARD VALIDATION
+    // Validation for Master System Rule
     const invalid = subjects.filter((s) => !s.masterSubjectId);
-
     if (invalid.length > 0) {
-      console.log("INVALID SUBJECTS:", invalid);
-      alert("All subjects must come from Master Subjects. Please select from the available pool.");
+      alert("All subjects must come from Master Subjects. Use the available pools.");
       return;
     }
 
+    // Prepare DB Payload
     const payload = subjects.map((s) => ({
       masterSubjectId: s.masterSubjectId, 
       code: s.code,
@@ -253,12 +253,16 @@ const SubjectManager = () => {
       semester: semester,
     }));
 
-    console.log("SUBMIT DATA:", payload);
-
     try {
-      await goToNextStep(payload, dataService.saveSubjects);
+      // 🔥 SAVE TO DB AND NAVIGATE
+      await saveAndNext(payload, dataService.saveSubjects);
     } catch (err) {
-      console.error(err);
+        // If data is already there (Duplicate Error), navigate forward anyway
+        if (err.response?.data?.message?.includes("Validation") || err.response?.status === 400) {
+            await saveAndNext();
+        } else {
+            alert("Submission failed. Check Console.");
+        }
     }
   };
 
@@ -266,14 +270,23 @@ const SubjectManager = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {/* 🔒 STATUS MESSAGE */}
+      {isLocked && (
+        <div className="flex items-center gap-2 p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400">
+          <CheckCircle2 size={18} />
+          <span className="text-sm font-medium">Subjects already configured for this semester. You can proceed.</span>
+        </div>
+      )}
+
       {/* SELECTION HEADER */}
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-wrap items-end gap-4">
+      <div className="bg-white dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-wrap items-end gap-4">
         <div className="space-y-1 flex-1 min-w-[200px]">
           <label className="text-[10px] font-bold text-gray-400 uppercase">Target Course</label>
           <select
             value={selectedCourse}
             onChange={(e) => setSelectedCourse(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 dark:text-white"
+            disabled={isLocked}
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 dark:text-white"
           >
             <option value="">Choose a program...</option>
             {courses.map((c) => (
@@ -287,7 +300,8 @@ const SubjectManager = () => {
           <select
             value={semester}
             onChange={(e) => setSemester(Number(e.target.value))}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 dark:text-white"
+            disabled={isLocked}
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 dark:text-white"
           >
             {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
               <option key={s} value={s}>Sem {s}</option>
@@ -297,7 +311,8 @@ const SubjectManager = () => {
 
         <button
           onClick={fetchCoreSubjects}
-          className="px-6 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 border border-green-200 dark:border-green-800 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-green-100 transition-all"
+          disabled={isLocked || !selectedCourse}
+          className="px-6 py-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all disabled:opacity-50"
         >
           <Sparkles size={16} /> Load Core Subjects
         </button>
@@ -315,8 +330,8 @@ const SubjectManager = () => {
             }}
             className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === cat
-                ? "bg-white dark:bg-gray-700 text-green-600 shadow-sm"
-                : "text-gray-500"
+                ? "bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm"
+                : "text-gray-500 dark:text-gray-400"
             }`}
           >
             {cat}
@@ -324,42 +339,31 @@ const SubjectManager = () => {
         ))}
       </div>
 
-      {/* ELECTIVE POOL SELECTION UI */}
-      {activeTab !== "CORE" && electivePool.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 border border-green-100 dark:border-green-900/30 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300">
+      {/* ELECTIVE POOL UI */}
+      {activeTab !== "CORE" && electivePool.length > 0 && !isLocked && (
+        <div className="bg-white dark:bg-gray-800/50 border border-orange-100 dark:border-orange-900/30 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300">
           <h3 className="text-sm font-bold dark:text-white mb-4 flex items-center gap-2">
-            <CheckCircle2 size={18} className="text-green-500" /> Select available {activeTab} Subjects
+            <CheckCircle2 size={18} className="text-orange-500" /> Select available {activeTab} Subjects
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {electivePool.map((sub) => (
               <label
                 key={sub.id}
                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  selectedElectives.includes(sub.id)
-                    ? "bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800"
+                  subjects.some(s => s.masterSubjectId === sub.id)
+                    ? "bg-orange-50 border-orange-200 dark:bg-orange-900/10 dark:border-orange-800"
                     : "bg-gray-50 dark:bg-gray-800 border-transparent"
                 }`}
               >
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  checked={selectedElectives.includes(sub.id)}
-                  onChange={() => {
-                    if (selectedElectives.includes(sub.id)) {
-                      setSelectedElectives(selectedElectives.filter((id) => id !== sub.id));
-                      setSubjects((prev) =>
-                        prev.filter((s) => !(s.masterSubjectId === sub.id && s.category === sub.defaultCategory))
-                      );
-                    } else {
-                      setSelectedElectives([...selectedElectives, sub.id]);
-                      setSubjects((prev) => {
-                        if (prev.some((s) => s.masterSubjectId === sub.id)) return prev;
-                        // 🔥 STEP 1 FIX: UPDATED OBJECT STRUCTURE
-                        return [
-                          ...prev,
-                          {
+                  className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                  checked={subjects.some(s => s.masterSubjectId === sub.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                        setSubjects([...subjects, {
                             id: sub.id,
-                            masterSubjectId: sub.id, // 🔥 THIS FIXES EVERYTHING
+                            masterSubjectId: sub.id,
                             code: sub.code,
                             name: sub.name,
                             department: sub.department,
@@ -367,10 +371,10 @@ const SubjectManager = () => {
                             lecture: sub.lectureHours,
                             tutorial: sub.tutorialHours,
                             practical: sub.practicalHours,
-                            preferredRoom: sub.preferredRoomType,
-                          },
-                        ];
-                      });
+                            preferredRoom: sub.preferredRoomType
+                        }]);
+                    } else {
+                        setSubjects(subjects.filter(s => s.masterSubjectId !== sub.id));
                     }
                   }}
                 />
@@ -385,40 +389,42 @@ const SubjectManager = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* INPUT SIDEBAR */}
+        {/* SIDEBAR TOOLS */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="bg-white dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold dark:text-white flex items-center gap-2">
-                {showBulk ? <Upload size={18} className="text-green-600" /> : <Plus size={18} className="text-green-600" />}
+                {showBulk ? <Upload size={18} className="text-orange-600" /> : <Plus size={18} className="text-orange-600" />}
                 {showBulk ? "Bulk Import" : activeTab === "CORE" ? "Manual Add" : "Import Subjects"}
               </h3>
-              <button
-                onClick={() => setShowBulk(!showBulk)}
-                className="text-[10px] font-bold uppercase text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-lg"
-              >
-                {showBulk ? "Manual Entry" : "Excel Import"}
-              </button>
+              {!isLocked && (
+                <button
+                  onClick={() => setShowBulk(!showBulk)}
+                  className="text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-lg"
+                >
+                  {showBulk ? "Manual Entry" : "Excel Import"}
+                </button>
+              )}
             </div>
 
-            {showBulk ? (
+            {showBulk && !isLocked ? (
               <div className="space-y-4">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center hover:border-green-500 cursor-pointer group"
+                  className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center hover:border-orange-500 cursor-pointer group"
                 >
                   <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelUpload} />
-                  <FileSpreadsheet className="mx-auto text-gray-300 group-hover:text-green-500 mb-2" size={40} />
+                  <FileSpreadsheet className="mx-auto text-gray-300 group-hover:text-orange-500 mb-2" size={40} />
                   <p className="text-sm font-medium dark:text-gray-300">Click to upload Excel</p>
                 </div>
                 <button
                   onClick={downloadTemplate}
-                  className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
                 >
                   <Download size={14} /> Download Template
                 </button>
               </div>
-            ) : activeTab === "CORE" ? (
+            ) : activeTab === "CORE" && !isLocked ? (
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-400 uppercase">Code & Name</label>
@@ -427,13 +433,13 @@ const SubjectManager = () => {
                       placeholder="CS101"
                       value={newSubject.code}
                       onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value.toUpperCase() })}
-                      className="w-1/3 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-1/3 px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     <input
                       placeholder="Subject Name"
                       value={newSubject.name}
                       onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
-                      className="w-2/3 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-2/3 px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
                 </div>
@@ -445,7 +451,7 @@ const SubjectManager = () => {
                         type="number"
                         value={newSubject[key]}
                         onChange={(e) => setNewSubject({ ...newSubject, [key]: parseInt(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-center dark:text-white"
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-center dark:text-white"
                       />
                     </div>
                   ))}
@@ -455,7 +461,7 @@ const SubjectManager = () => {
                   <select
                     value={newSubject.preferredRoom}
                     onChange={(e) => setNewSubject({ ...newSubject, preferredRoom: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none dark:text-white"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none dark:text-white"
                   >
                     {ROOM_TYPES.map((r) => (
                       <option key={r} value={r}>{r.replace("_", " ")}</option>
@@ -464,7 +470,7 @@ const SubjectManager = () => {
                 </div>
                 <button
                   onClick={handleAddSubject}
-                  className="w-full py-3 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg hover:bg-orange-700 transition-all flex items-center justify-center gap-2"
                 >
                   <Plus size={18} /> Add Subject
                 </button>
@@ -472,9 +478,7 @@ const SubjectManager = () => {
             ) : (
               <div className="text-center py-8">
                 <Info size={32} className="mx-auto text-gray-300 mb-2" />
-                <p className="text-xs text-gray-500">
-                  Please use the checkbox pool above or Excel Import for {activeTab} subjects.
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Catalog is managed via pools for {activeTab} subjects.</p>
               </div>
             )}
           </div>
@@ -482,13 +486,13 @@ const SubjectManager = () => {
 
         {/* LIST TABLE */}
         <div className="lg:col-span-8">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <h3 className="font-bold dark:text-white">{activeTab} List ({filteredSubjects.length})</h3>
             </div>
             <div className="overflow-x-auto max-h-[400px]">
               <table className="w-full text-left">
-                <thead className="sticky top-0 bg-white dark:bg-gray-900 text-[10px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <thead className="sticky top-0 bg-white dark:bg-gray-800/50 text-[10px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
                   <tr>
                     <th className="px-6 py-4">Subject</th>
                     <th className="px-6 py-4">L-T-P</th>
@@ -505,25 +509,27 @@ const SubjectManager = () => {
                     </tr>
                   ) : (
                     filteredSubjects.map((s) => (
-                      <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                         <td className="px-6 py-4">
                           <div className="font-bold text-sm dark:text-white">{s.code}</div>
-                          <div className="text-xs text-gray-500">{s.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{s.name}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-1">
-                            <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-bold">L:{s.lecture}</span>
-                            <span className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold">T:{s.tutorial}</span>
-                            <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 px-1.5 py-0.5 rounded text-[10px] font-bold">P:{s.practical}</span>
+                            <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold">L:{s.lecture}</span>
+                            <span className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded text-[10px] font-bold">T:{s.tutorial}</span>
+                            <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded text-[10px] font-bold">P:{s.practical}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-[10px] font-medium dark:text-gray-400 uppercase">
-                          {s.preferredRoom.replace("_", " ")}
+                          {s.preferredRoom?.replace("_", " ") || "—"}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button onClick={() => removeSubject(s.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                            <Trash2 size={16} />
-                          </button>
+                          {!isLocked && (
+                            <button onClick={() => removeSubject(s.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -536,17 +542,17 @@ const SubjectManager = () => {
           {/* FOOTER */}
           <div className="flex justify-between items-center mt-8">
             <button
-              onClick={goToPrevStep}
-              className="px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold flex items-center gap-2 hover:bg-gray-100 transition-all"
+              onClick={() => handleNavigate("prev")}
+              className="px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
             >
               <ChevronLeft size={20} /> Back
             </button>
             <button
               onClick={handleSubmit}
-              disabled={subjects.length === 0 || isLoading}
-              className="px-8 py-3 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-bold shadow-lg hover:scale-[1.02] disabled:opacity-50 transition-all flex items-center gap-2"
+              disabled={isLoading || (subjects.length === 0 && !isLocked)}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-700 text-white font-bold shadow-lg hover:from-orange-600 hover:to-orange-800 disabled:opacity-50 transition-all flex items-center gap-2"
             >
-              {isLoading ? "Saving Catalog..." : "Save & Next"} <ChevronRight size={20} />
+              {isLoading ? "Saving Catalog..." : (isLocked || subjects.length > 0) ? "Next: Faculty" : "Save & Continue"} <ChevronRight size={20} />
             </button>
           </div>
         </div>

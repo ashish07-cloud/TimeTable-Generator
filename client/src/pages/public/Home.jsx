@@ -8,6 +8,13 @@ import {
   Clock,
   Shield,
   Star,
+  CheckCircle,
+  BarChart3,
+  Sparkles,
+  GraduationCap,
+  BookOpen,
+  Building2,
+  ChevronRight,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
@@ -34,84 +41,72 @@ function Home() {
     >
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0">
-          <div
-            className={`absolute top-20 left-10 w-4 h-4 rounded-full opacity-20 animate-pulse ${
-              isDark ? "bg-green-500" : "bg-green-400"
-            }`}
-          ></div>
-          <div
-            className={`absolute top-40 right-20 w-6 h-6 rounded-full opacity-30 animate-bounce ${
-              isDark ? "bg-green-400" : "bg-green-500"
-            }`}
-          ></div>
-          <div
-            className={`absolute bottom-20 left-1/4 w-3 h-3 rounded-full opacity-40 animate-pulse delay-1000 ${
-              isDark ? "bg-green-600" : "bg-green-600"
-            }`}
-          ></div>
-        </div>
+        {/* Animated Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-purple-500/10" />
+
+        {/* Floating Decorations */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-orange-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
 
         <div className="container mx-auto px-6 py-20 text-center relative z-10">
           <div className="max-w-4xl mx-auto">
             {/* Badge */}
             <div
-              className={`inline-flex items-center gap-2 border rounded-full px-4 py-2 mb-8 ${
+              className={`inline-flex items-center gap-2 border rounded-full px-4 py-2 mb-8 backdrop-blur-sm ${
                 isDark
-                  ? "bg-gray-900 border-green-500/30 text-green-400"
-                  : "bg-gray-100 border-green-400/30 text-green-600"
+                  ? "bg-gray-900/50 border-orange-500/30 text-orange-400"
+                  : "bg-white/50 border-orange-400/30 text-orange-600"
               }`}
             >
-              <Zap
-                size={16}
-                className={isDark ? "text-green-400" : "text-green-600"}
-              />
+              <Sparkles size={16} className="text-orange-500" />
               <span className="text-sm font-medium">
                 AI-Powered Timetable Generation
               </span>
             </div>
 
-            <h1 className="text-6xl md:text-7xl font-extrabold mb-6 leading-tight">
-              Say Goodbye to
-              <span className="bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent block">
-                Timetable Chaos
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-extrabold mb-6 leading-tight">
+              <span className="bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
+                Intelligent
               </span>
+              <br />
+              Academic Scheduling
             </h1>
 
             <p
-              className={`text-xl max-w-2xl mx-auto mb-8 leading-relaxed ${
+              className={`text-xl md:text-2xl max-w-2xl mx-auto mb-8 leading-relaxed ${
                 isDark ? "text-gray-300" : "text-gray-600"
               }`}
             >
-              Harness the power of AI to create flawless, conflict-free academic
-              schedules in minutes. Optimized for NEP 2020 with intelligent
-              resource allocation and zero clashes.
+              Eliminate timetable conflicts forever with our AI-driven engine.
+              Perfectly aligned with NEP 2020 guidelines and built for modern
+              universities.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <button
                 onClick={handleStart}
-                className="bg-gradient-to-r from-green-500 to-green-700 text-white font-bold py-4 px-8 rounded-lg hover:from-green-600 hover:to-green-800 transition-all duration-300 transform hover:scale-105 flex items-center gap-3 text-lg"
+                className="bg-gradient-to-r from-orange-500 to-orange-700 text-white font-bold py-4 px-8 rounded-xl hover:from-orange-600 hover:to-orange-800 transition-all duration-300 transform hover:scale-105 flex items-center gap-3 text-lg shadow-lg"
               >
                 {user ? "Go to Dashboard" : "Start Free Trial"}
                 <ArrowRight size={20} />
               </button>
               <button
-                className={`border font-semibold py-4 px-8 rounded-lg hover:border-green-500 transition-all duration-300 ${
+                className={`border-2 font-semibold py-4 px-8 rounded-xl hover:border-orange-500 transition-all duration-300 backdrop-blur-sm ${
                   isDark
-                    ? "border-gray-600 text-white hover:text-green-400"
-                    : "border-gray-300 text-gray-700 hover:text-green-600"
+                    ? "border-gray-600 text-white hover:text-orange-400"
+                    : "border-gray-300 text-gray-700 hover:text-orange-600"
                 }`}
               >
                 Watch Demo
               </button>
             </div>
 
-            {/* Stats */}
+            {/* Stats Row */}
             <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-              <div>
-                <div className="text-3xl font-bold text-green-400">99.9%</div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-orange-400">
+                  99.9%
+                </div>
                 <div
                   className={
                     isDark ? "text-gray-400 text-sm" : "text-gray-600 text-sm"
@@ -120,8 +115,10 @@ function Home() {
                   Clash-Free
                 </div>
               </div>
-              <div>
-                <div className="text-3xl font-bold text-green-400">10x</div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-orange-400">
+                  10x
+                </div>
                 <div
                   className={
                     isDark ? "text-gray-400 text-sm" : "text-gray-600 text-sm"
@@ -130,8 +127,10 @@ function Home() {
                   Faster
                 </div>
               </div>
-              <div>
-                <div className="text-3xl font-bold text-green-400">24/7</div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-orange-400">
+                  24/7
+                </div>
                 <div
                   className={
                     isDark ? "text-gray-400 text-sm" : "text-gray-600 text-sm"
@@ -155,15 +154,19 @@ function Home() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Why Choose <span className="text-green-400">AcadiaPlan</span>?
+              Why Choose{" "}
+              <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+                AcadiaPlan
+              </span>
+              ?
             </h2>
             <p
               className={`text-xl max-w-2xl mx-auto ${
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Built specifically for the complex requirements of NEP 2020 with
-              cutting-edge technology.
+              Designed for academic excellence with cutting-edge technology and
+              deep understanding of institutional needs.
             </p>
           </div>
 
@@ -220,17 +223,17 @@ function Home() {
             ].map((feature, index) => (
               <div
                 key={index}
-                className={`p-8 rounded-2xl border transition-all duration-300 hover:transform hover:scale-105 group ${
+                className={`group p-8 rounded-2xl border transition-all duration-300 hover:transform hover:scale-105 ${
                   isDark
-                    ? "bg-gray-800/50 border-gray-700 hover:border-green-500"
-                    : "bg-white border-gray-200 hover:border-green-400 shadow-sm"
+                    ? "bg-gray-800/50 border-gray-700 hover:border-orange-500"
+                    : "bg-white border-gray-200 hover:border-orange-400 shadow-sm"
                 }`}
               >
-                <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-700 text-white mb-6 group-hover:scale-110 transition-transform duration-300">
+                <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 text-white mb-6 group-hover:scale-110 transition-transform duration-300">
                   {feature.icon}
                 </div>
                 <h3
-                  className={`text-xl font-semibold mb-3 group-hover:text-green-400 transition-colors ${
+                  className={`text-xl font-semibold mb-3 group-hover:text-orange-400 transition-colors ${
                     isDark ? "text-white" : "text-gray-900"
                   }`}
                 >
@@ -249,8 +252,178 @@ function Home() {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              How It{" "}
+              <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+                Works
+              </span>
+            </h2>
+            <p
+              className={`text-xl max-w-2xl mx-auto ${
+                isDark ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              Simple, intuitive steps to transform your academic scheduling.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              {
+                icon: <BookOpen size={40} />,
+                title: "1. Input Data",
+                description:
+                  "Add courses, subjects, faculty, and rooms. Define constraints and preferences.",
+              },
+              {
+                icon: <BarChart3 size={40} />,
+                title: "2. AI Analysis",
+                description:
+                  "Our engine processes thousands of possibilities in seconds, optimizing for all constraints.",
+              },
+              {
+                icon: <GraduationCap size={40} />,
+                title: "3. Generate & Publish",
+                description:
+                  "Get a complete, clash-free timetable. Publish instantly and share with students.",
+              },
+            ].map((step, index) => (
+              <div
+                key={index}
+                className={`relative p-8 rounded-2xl border text-center transition-all duration-300 hover:shadow-xl ${
+                  isDark
+                    ? "bg-gray-800/30 border-gray-700"
+                    : "bg-white border-gray-200 shadow-sm"
+                }`}
+              >
+                <div className="flex justify-center mb-6">
+                  <div className="p-4 bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl text-white">
+                    {step.icon}
+                  </div>
+                </div>
+                <h3
+                  className={`text-2xl font-bold mb-3 ${
+                    isDark ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  {step.title}
+                </h3>
+                <p
+                  className={`leading-relaxed ${
+                    isDark ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
+                  {step.description}
+                </p>
+                {index < 2 && (
+                  <ChevronRight
+                    size={32}
+                    className={`absolute top-1/2 -right-4 hidden md:block ${
+                      isDark ? "text-gray-600" : "text-gray-400"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section
+        className={`py-20 transition-colors duration-300 ${
+          isDark ? "bg-gray-900/50" : "bg-gray-50"
+        }`}
+      >
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Trusted by{" "}
+              <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+                Leading Institutions
+              </span>
+            </h2>
+            <p
+              className={`text-xl max-w-2xl mx-auto ${
+                isDark ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              See what academic leaders are saying about AcadiaPlan.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {[
+              {
+                quote:
+                  "AcadiaPlan reduced our timetable planning time from 3 weeks to just 2 hours. The AI engine is incredibly smart.",
+                name: "Dr. Sarah Johnson",
+                title: "Dean of Academics, Tech University",
+              },
+              {
+                quote:
+                  "Finally, a tool that handles the complexity of NEP 2020 with ease. No more faculty clashes or room conflicts.",
+                name: "Prof. Michael Chen",
+                title: "Head of Department, State College",
+              },
+              {
+                quote:
+                  "The real-time updates and intuitive interface have made schedule changes a breeze. Our staff loves it.",
+                name: "Anita Sharma",
+                title: "Administrator, Central University",
+              },
+            ].map((testimonial, index) => (
+              <div
+                key={index}
+                className={`p-8 rounded-2xl border transition-all duration-300 hover:transform hover:scale-105 ${
+                  isDark
+                    ? "bg-gray-800/30 border-gray-700"
+                    : "bg-white border-gray-200 shadow-sm"
+                }`}
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={18}
+                      className="fill-orange-500 text-orange-500"
+                    />
+                  ))}
+                </div>
+                <p
+                  className={`text-lg italic mb-6 ${
+                    isDark ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  "{testimonial.quote}"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-700 rounded-full flex items-center justify-center text-white font-bold">
+                    {testimonial.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-semibold">{testimonial.name}</div>
+                    <div
+                      className={`text-sm ${
+                        isDark ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    >
+                      {testimonial.title}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-green-600 to-green-800">
+      <section className="py-20 bg-gradient-to-r from-orange-600 to-orange-800">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
             Ready to Transform Your Timetable?
@@ -262,11 +435,11 @@ function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
               onClick={handleStart}
-              className="bg-black text-green-400 font-bold py-4 px-8 rounded-lg hover:bg-gray-900 transition-all duration-300 transform hover:scale-105 flex items-center gap-3 text-lg"
+              className="bg-black text-orange-400 font-bold py-4 px-8 rounded-xl hover:bg-gray-900 transition-all duration-300 transform hover:scale-105 flex items-center gap-3 text-lg shadow-lg"
             >
               {user ? "Go to Dashboard" : "Start Free Trial"}
             </button>
-            <button className="bg-white/20 text-white font-semibold py-4 px-8 rounded-lg hover:bg-white/30 transition-all duration-300 backdrop-blur-sm">
+            <button className="bg-white/20 text-white font-semibold py-4 px-8 rounded-xl hover:bg-white/30 transition-all duration-300 backdrop-blur-sm">
               Schedule a Demo
             </button>
           </div>

@@ -20,19 +20,18 @@ const OnboardingWizard = lazy(() => import("./pages/admin/OnboardingWizard"));
 const GenerateTimetable = lazy(() => import("./pages/admin/GenerateTimetable"));
 const TimetableEditor = lazy(() => import("./pages/admin/TimetableEditor"));
 
+// 🔥 New Admin Pages
+const UsersPage = lazy(() => import("./pages/admin/UsersPage"));
+const ReportsPage = lazy(() => import("./pages/admin/ReportsPage"));
+const SettingsPage = lazy(() => import("./pages/admin/SettingsPage"));
+
 // 🔥 Setup Step Components
 const InstitutionalConfig = lazy(() =>
   import("./components/admin/InstitutionalConfig")
 );
-const RoomManager = lazy(() =>
-  import("./components/admin/RoomManager")
-);
-const SubjectManager = lazy(() =>
-  import("./components/admin/SubjectManager")
-);
-const FacultyManager = lazy(() =>
-  import("./components/admin/FacultyManager")
-);
+const RoomManager = lazy(() => import("./components/admin/RoomManager"));
+const SubjectManager = lazy(() => import("./components/admin/SubjectManager"));
+const FacultyManager = lazy(() => import("./components/admin/FacultyManager"));
 const EnrollmentManager = lazy(() =>
   import("./components/admin/EnrollmentManager")
 );
@@ -43,7 +42,6 @@ function App() {
       <AuthProvider>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
-
             {/* PUBLIC DOMAIN */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Home />} />
@@ -66,7 +64,6 @@ function App() {
               {/* 🔥 SETUP SYSTEM */}
               <Route path="setup" element={<OnboardingWizard />}>
                 <Route index element={<Navigate to="institution" replace />} />
-                
                 <Route path="institution" element={<InstitutionalConfig />} />
                 <Route path="rooms" element={<RoomManager />} />
                 <Route path="subjects" element={<SubjectManager />} />
@@ -78,14 +75,18 @@ function App() {
               <Route path="generate" element={<GenerateTimetable />} />
               <Route path="edit/:id" element={<TimetableEditor />} />
 
-              {/* MANAGEMENT (future) */}
+              {/* 🔥 NEW ADMIN PAGES */}
+              <Route path="users" element={<UsersPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+
+              {/* MANAGEMENT (future) – keeping these for now, but they might conflict with the setup routes */}
               <Route path="faculty" element={<div>Faculty Management</div>} />
               <Route path="rooms" element={<div>Room Management</div>} />
             </Route>
 
             {/* GLOBAL FALLBACK */}
             <Route path="*" element={<Navigate to="/" replace />} />
-
           </Routes>
         </Suspense>
       </AuthProvider>

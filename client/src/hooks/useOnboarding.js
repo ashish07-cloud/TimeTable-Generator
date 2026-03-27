@@ -1,97 +1,95 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import dataService from "../api/dataService";
 
-export const STEPS = {
-  INSTITUTION: 1,
-  ROOMS: 2,
-  SUBJECTS: 3,
-  FACULTY: 4,
-  ENROLLMENT: 5,
-};
+export const stepRoutes = [
+  "institution",
+  "rooms",
+  "subjects",
+  "faculty",
+  "enrollment",
+];
 
 export const useOnboarding = () => {
-  const [currentStep, setCurrentStep] = useState(STEPS.INSTITUTION);
-  const [progress, setProgress] = useState(null); // 🔥 FULL DATA STATE
+  const [progress, setProgress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 🔥 FETCH COMPLETE PROGRESS (SOURCE OF TRUTH)
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 1. Derive current step number from the URL path
+  const path = location.pathname.split("/").pop();
+  const currentStepNumber = stepRoutes.indexOf(path) + 1 || 1;
+
+  // 2. Fetch all academic progress from DB
   const fetchProgress = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
       const res = await dataService.getProgress();
-      const data = res?.data;
-      console.log("RAW API:", res);
-console.log("DATA:", res.data);
-
-      if (!data) throw new Error("Invalid progress response");
-
-      // 🔥 STORE FULL DATA
-      setProgress(data);
-
-      // 🔥 STEP SYNC
-      if (data.step) {
-        setCurrentStep(data.step);
-      }
-
-      return data;
+      setProgress(res.data);
+      return res.data;
     } catch (err) {
-      console.error("❌ Progress fetch failed:", err);
-      setError(err.response?.data?.message || "Failed to fetch progress");
+      console.error("Progress Sync Error:", err);
+      setError("Failed to sync institutional progress.");
       return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // 🔥 SAVE + REFRESH (NO LOCAL STATE TRUST)
-  const goToNextStep = useCallback(
+  // 3. Navigation Logic (Forward/Backward)
+  const handleNavigate = useCallback(
+    (direction) => {
+      const currentIndex = stepRoutes.indexOf(path);
+      const nextIndex =
+        direction === "next" ? currentIndex + 1 : currentIndex - 1;
+
+      if (nextIndex >= 0 && nextIndex < stepRoutes.length) {
+        navigate(`/admin/setup/${stepRoutes[nextIndex]}`);
+      }
+    },
+    [path, navigate],
+  );
+
+  // 4. Save Logic + Move to next
+  const saveAndNext = useCallback(
     async (data, saveFn) => {
       setIsLoading(true);
       setError(null);
 
       try {
+        // Only call save if data and a save function are provided
         if (saveFn && data) {
-          await saveFn(data); // 🔥 save to backend
+          await saveFn(data);
         }
 
-        // 🔥 ALWAYS REFETCH AFTER SAVE
-        const updated = await fetchProgress();
+        // Always refresh global progress after a save
+        await fetchProgress();
 
-        if (!updated) {
-          throw new Error("Failed to refresh progress");
-        }
+        // Move to next URL
+        handleNavigate("next");
       } catch (err) {
-        console.error("❌ Step transition failed:", err);
-        setError(err.response?.data?.message || "Failed to save step");
+        setError(
+          err.response?.data?.message ||
+            "Failed to save data. Please try again.",
+        );
+        throw err; // Let the component handle local error UI if needed
       } finally {
         setIsLoading(false);
       }
     },
-    [fetchProgress]
+    [fetchProgress, handleNavigate],
   );
 
-  // 🔥 OPTIONAL BACK NAVIGATION
-  const goToPrevStep = useCallback(() => {
-    setCurrentStep((prev) => Math.max(prev - 1, STEPS.INSTITUTION));
-  }, []);
-
   return {
-    // 🔹 STATE
-    currentStep,
+    currentStepNumber,
     progress,
     isLoading,
     error,
-
-    // 🔹 ACTIONS
     fetchProgress,
-    goToNextStep,
-    goToPrevStep,
-
-    // 🔹 HELPERS
-    isFirstStep: currentStep === STEPS.INSTITUTION,
-    isLastStep: currentStep === STEPS.ENROLLMENT,
+    saveAndNext,
+    handleNavigate,
   };
 };
