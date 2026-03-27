@@ -813,96 +813,97 @@ export default function GenerateTimetable() {
 
   return (
     <div className="p-6 md:p-8 space-y-7 max-w-[1400px] mx-auto">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black dark:text-white flex items-center gap-3 tracking-tighter">
-            <Sparkles className="text-green-500 shrink-0" size={28} />
-            AI Generation Hub
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Generate conflict-free timetables for any programme &amp; semester.
-          </p>
-        </div>
+  {/* ── Page header ─────────────────────────────────────────────────── */}
+  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 className="text-2xl md:text-3xl font-black dark:text-white flex items-center gap-3 tracking-tighter">
+        <Sparkles className="text-orange-500 shrink-0" size={28} />
+        AI Generation Hub
+      </h1>
+      <p className="text-gray-500 text-sm mt-1">
+        Generate conflict-free timetables for any programme &amp; semester.
+      </p>
+    </div>
 
-        {generated && (
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-200 dark:border-green-800">
-              ✓ Optimisation Stable
-            </span>
-          </div>
+    {generated && (
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-orange-200 dark:border-orange-800">
+          ✓ Optimisation Stable
+        </span>
+      </div>
+    )}
+  </div>
+
+  {/* ── Control panel ───────────────────────────────────────────────── */}
+  <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-100/60 dark:shadow-none">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+      {/* Course selector */}
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+          <BookOpen size={12} /> Degree Programme
+        </label>
+        <select
+          value={selectedCourse}
+          onChange={(e) => {
+            setSelectedCourse(e.target.value);
+            setGenerated(false);
+            setTimetable([]);
+          }}
+          className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm font-semibold dark:text-white focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer transition-all"
+        >
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Semester selector */}
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+          <Layers size={12} /> Academic Period
+        </label>
+        <select
+          value={selectedSemester}
+          onChange={(e) => setSelectedSemester(e.target.value)}
+          className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm font-semibold dark:text-white focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer transition-all"
+        >
+          {semesters.map((s) => (
+            <option key={s} value={s}>
+              Semester {s}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Generate button */}
+      <button
+        onClick={handleGenerate}
+        disabled={loading}
+        className={`w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all ${
+          loading
+            ? "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+            : "bg-gradient-to-r from-orange-500 to-orange-700 text-white shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-95"
+        }`}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="animate-spin" size={16} /> Solving…
+          </>
+        ) : generated ? (
+          <>
+            <RefreshCw size={16} /> Regenerate
+          </>
+        ) : (
+          <>
+            <Sparkles size={16} /> Generate Timetable
+          </>
         )}
-      </div>
+      </button>
+    </div>
+  </div>
 
-      {/* ── Control panel ───────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-lg shadow-gray-100/60 dark:shadow-none">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
-          {/* Course selector */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-              <BookOpen size={12} /> Degree Programme
-            </label>
-            <select
-              value={selectedCourse}
-              onChange={(e) => {
-                setSelectedCourse(e.target.value);
-                setGenerated(false);
-                setTimetable([]);
-              }}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm font-semibold dark:text-white focus:ring-2 focus:ring-green-500 outline-none cursor-pointer transition-all"
-            >
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Semester selector */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Layers size={12} /> Academic Period
-            </label>
-            <select
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm font-semibold dark:text-white focus:ring-2 focus:ring-green-500 outline-none cursor-pointer transition-all"
-            >
-              {semesters.map((s) => (
-                <option key={s} value={s}>
-                  Semester {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Generate button */}
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className={`w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all ${
-              loading
-                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-green-500 to-green-700 text-white shadow-lg shadow-green-500/25 hover:scale-[1.02] active:scale-95"
-            }`}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" size={16} /> Solving…
-              </>
-            ) : generated ? (
-              <>
-                <RefreshCw size={16} /> Regenerate
-              </>
-            ) : (
-              <>
-                <Sparkles size={16} /> Generate Timetable
-              </>
-            )}
-          </button>
-        </div>
-      </div>
 
       {/* ── Stats row (only after generation) ───────────────────────────── */}
       {generated && stats && (

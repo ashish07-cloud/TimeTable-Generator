@@ -33,11 +33,14 @@ function Home() {
     }
   };
 
+  // Adjust for fixed navbar height (approx 80px)
+  const navbarHeight = "80px";
+
   return (
     <div
       className={`min-h-screen transition-colors duration-300 ${
         isDark ? "bg-black text-white" : "bg-white text-gray-900"
-      }`}
+      } pt-[80px]`}
     >
       {/* Hero Section */}
       <section className="relative overflow-hidden">
@@ -147,7 +150,7 @@ function Home() {
       {/* Features Section */}
       <section
         id="features"
-        className={`py-20 transition-colors duration-300 ${
+        className={`py-20 transition-colors duration-300 scroll-mt-[80px] ${
           isDark ? "bg-gray-900/50" : "bg-gray-50"
         }`}
       >
@@ -450,3 +453,4 @@ function Home() {
 }
 
 export default Home;
+
