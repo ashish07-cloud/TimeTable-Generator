@@ -74,12 +74,12 @@ function Footer() {
             <div className="flex items-center space-x-2 mb-4">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                 isDark 
-                  ? 'bg-gradient-to-br from-green-400 to-green-600' 
-                  : 'bg-gradient-to-br from-green-500 to-green-700'
+                  ? 'bg-gradient-to-br from-orange-400 to-orange-600' 
+                  : 'bg-gradient-to-br from-orange-500 to-orange-700'
               }`}>
                 <Zap size={24} className="text-white" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+              <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
                 AcadiaPlan
               </span>
             </div>
@@ -122,7 +122,7 @@ function Footer() {
                   <li key={link.name}>
                     <Link 
                       to={link.href}
-                      className={`text-sm transition-colors hover:text-green-400 ${
+                      className={`text-sm transition-colors hover:text-orange-500 ${
                         isDark ? 'text-gray-400' : 'text-gray-600'
                       }`}
                     >
@@ -143,8 +143,8 @@ function Footer() {
               href={social.href}
               className={`p-2 rounded-lg transition-all duration-300 hover:scale-110 ${
                 isDark 
-                  ? 'bg-gray-800 text-gray-400 hover:text-green-400 hover:bg-gray-700' 
-                  : 'bg-white text-gray-600 hover:text-green-600 hover:bg-gray-100 shadow-sm'
+                  ? 'bg-gray-800 text-gray-400 hover:text-orange-400 hover:bg-gray-700' 
+                  : 'bg-white text-gray-600 hover:text-orange-600 hover:bg-gray-100 shadow-sm'
               }`}
               aria-label={social.label}
             >
@@ -162,13 +162,13 @@ function Footer() {
               © {new Date().getFullYear()} AcadiaPlan. All rights reserved. Built for NEP 2020 compliance.
             </p>
             <div className="flex space-x-6 text-sm">
-              <Link to="/privacy" className="hover:text-green-400 transition-colors">
+              <Link to="/privacy" className="hover:text-orange-500 transition-colors">
                 Privacy Policy
               </Link>
-              <Link to="/terms" className="hover:text-green-400 transition-colors">
+              <Link to="/terms" className="hover:text-orange-500 transition-colors">
                 Terms of Service
               </Link>
-              <Link to="/cookies" className="hover:text-green-400 transition-colors">
+              <Link to="/cookies" className="hover:text-orange-500 transition-colors">
                 Cookie Policy
               </Link>
             </div>

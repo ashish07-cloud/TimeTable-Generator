@@ -21,9 +21,9 @@ const GenerateTimetable = lazy(() => import("./pages/admin/GenerateTimetable"));
 const TimetableEditor = lazy(() => import("./pages/admin/TimetableEditor"));
 
 // 🔥 New Admin Pages
-const UsersPage = lazy(() => import("./pages/admin/UsersPage"));
-const ReportsPage = lazy(() => import("./pages/admin/ReportsPage"));
-const SettingsPage = lazy(() => import("./pages/admin/SettingsPage"));
+// const UsersPage = lazy(() => import("./pages/admin/UsersPage"));
+// const ReportsPage = lazy(() => import("./pages/admin/ReportsPage"));
+// const SettingsPage = lazy(() => import("./pages/admin/SettingsPage"));
 
 // 🔥 Setup Step Components
 const InstitutionalConfig = lazy(() =>
@@ -76,9 +76,9 @@ function App() {
               <Route path="edit/:id" element={<TimetableEditor />} />
 
               {/* 🔥 NEW ADMIN PAGES */}
-              <Route path="users" element={<UsersPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
+              {/* <Route path="users" element={<UsersPage />} /> */}
+              {/* <Route path="reports" element={<ReportsPage />} /> */}
+              {/* <Route path="settings" element={<SettingsPage />} /> */}
 
               {/* MANAGEMENT (future) – keeping these for now, but they might conflict with the setup routes */}
               <Route path="faculty" element={<div>Faculty Management</div>} />
