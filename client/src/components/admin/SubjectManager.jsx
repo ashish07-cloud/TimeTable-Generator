@@ -1,38 +1,64 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Plus, Trash2, ChevronLeft, ChevronRight, 
-  BookOpen, Sparkles, LayoutGrid, Info, Search
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Plus,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  BookOpen,
+  Sparkles,
+  LayoutGrid,
+  Info,
+  Search,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { useOnboarding } from "../../hooks/useOnboarding";
 import dataService from "../../api/dataService";
+import * as XLSX from "xlsx";
 
 const CATEGORIES = ["CORE", "GE", "SEC", "AEC", "VAC"];
 const ROOM_TYPES = [
-  "LECTURE_HALL", "COMPUTER_LAB", "PHYSICS_LAB", "CHEMISTRY_LAB", "BIOLOGY_LAB"
+  "LECTURE_HALL",
+  "COMPUTER_LAB",
+  "PHYSICS_LAB",
+  "CHEMISTRY_LAB",
+  "BIOLOGY_LAB",
 ];
 
 const SubjectManager = () => {
   const { goToNextStep, goToPrevStep, isLoading } = useOnboarding();
+  const fileInputRef = useRef(null);
 
   // --- STATE ---
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [semester, setSemester] = useState(1);
-  const [subjects, setSubjects] = useState([]); // Master state for ALL categories
+  const [subjects, setSubjects] = useState([]);
   const [activeTab, setActiveTab] = useState("CORE");
+  const [showBulk, setShowBulk] = useState(false);
+
+  // NEW STATE FOR ELECTIVES
+  const [electivePool, setElectivePool] = useState([]);
+  const [selectedElectives, setSelectedElectives] = useState([]);
 
   const [newSubject, setNewSubject] = useState({
-    code: "", name: "", department: "",
-    lecture: 3, tutorial: 0, practical: 0,
+    code: "",
+    name: "",
+    department: "",
+    lecture: 3,
+    tutorial: 0,
+    practical: 0,
     preferredRoom: "LECTURE_HALL",
   });
 
-  // --- 1. LOAD COURSES ON MOUNT ---
+  // --- 1. LOAD INITIAL DATA ---
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         const res = await dataService.getProgress();
-        // Assuming getProgress returns the setup state including courses
         setCourses(res.data.courses || []);
       } catch (err) {
         console.error("Failed to load courses", err);
@@ -41,7 +67,32 @@ const SubjectManager = () => {
     loadInitialData();
   }, []);
 
-  // --- 3. FETCH CORE SUBJECTS FROM MASTER LIBRARY ---
+  useEffect(() => {
+  const load = async () => {
+    const res = await dataService.getSubjects();
+    setSubjects(res.data || []);
+  };
+  load();
+}, []);
+
+  // --- 2. FETCH ELECTIVES (For GE, SEC, AEC, VAC) ---
+  // 🔥 STEP 2 FIX: Mapped masterSubjectId in pool fetch
+  const fetchElectives = async (category) => {
+    try {
+      const res = await dataService.getElectives();
+      const filtered = res.data
+        .filter((s) => s.defaultCategory === category)
+        .map((s) => ({
+          ...s,
+          masterSubjectId: s.id, // 🔥 ADDED AS PER STEP 2
+        }));
+      setElectivePool(filtered);
+    } catch (err) {
+      console.error("Failed to load electives pool", err);
+    }
+  };
+
+  // --- 3. CORE SUBJECTS FETCH ---
   const fetchCoreSubjects = async () => {
     if (!selectedCourse) {
       alert("Please select a course first");
@@ -50,9 +101,10 @@ const SubjectManager = () => {
 
     try {
       const res = await dataService.getCoreSubjects(selectedCourse, semester);
-      
+
       const mapped = res.data.map((s) => ({
-        id: `master-${s.id}-${Date.now()}`, // Temporary UI ID
+        id: `master-${s.id}`,
+        masterSubjectId: s.id, 
         code: s.code,
         name: s.name,
         department: s.department,
@@ -61,13 +113,14 @@ const SubjectManager = () => {
         tutorial: s.tutorialHours,
         practical: s.practicalHours,
         preferredRoom: s.preferredRoomType,
-        courseId: selectedCourse, // Explicitly link CORE subjects
+        courseId: selectedCourse,
       }));
 
-      // Filter out duplicates (if user clicks "Load" twice)
-      setSubjects(prev => {
-        const existingCodes = new Set(prev.map(p => p.code));
-        const uniqueNew = mapped.filter(m => !existingCodes.has(m.code));
+      setSubjects((prev) => {
+        const existingCodes = new Set(prev.map((p) => p.code.toLowerCase()));
+        const uniqueNew = mapped.filter(
+          (m) => !existingCodes.has(m.code.toLowerCase()),
+        );
         return [...prev, ...uniqueNew];
       });
     } catch (err) {
@@ -75,53 +128,145 @@ const SubjectManager = () => {
     }
   };
 
-  // --- 6. ADD SUBJECT (MANUAL ENTRY) ---
+  // --- 4. EXCEL UPLOAD ---
+  const handleExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      const mapped = json.map((row) => ({
+        id: Date.now() + Math.random(),
+        masterSubjectId: null, // Note: Excel subjects will fail the new validation unless they are in master_subjects
+        code: String(row.code || "").toUpperCase(),
+        name: row.name,
+        department: row.department || "General",
+        category: (row.category || "GE").toUpperCase(),
+        lecture: Number(row.lectureHours || 0),
+        tutorial: Number(row.tutorialHours || 0),
+        practical: Number(row.practicalHours || 0),
+        preferredRoom: row.preferredRoomType || "LECTURE_HALL",
+      }));
+
+      const unique = mapped.filter((newSub) => {
+        return !subjects.some(
+          (s) =>
+            s.code.toLowerCase() === newSub.code.toLowerCase() &&
+            s.category === newSub.category,
+        );
+      });
+
+      setSubjects((prev) => [...prev, ...unique]);
+      e.target.value = null;
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const downloadTemplate = () => {
+    const data = [
+      {
+        code: "ECO101",
+        name: "Micro Economics",
+        department: "Economics",
+        category: "GE",
+        lectureHours: 3,
+        tutorialHours: 1,
+        practicalHours: 0,
+        preferredRoomType: "LECTURE_HALL",
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Subjects");
+    XLSX.writeFile(wb, "subjects_template.xlsx");
+  };
+
+  // --- 5. MANUAL ADD ---
   const handleAddSubject = () => {
     if (!newSubject.code || !newSubject.name) return;
 
-    const subjectToAdd = {
-      ...newSubject,
-      category: activeTab,
-      id: `manual-${Date.now()}`,
-      // Link courseId only if we are adding a CORE subject manually
-      courseId: activeTab === "CORE" ? selectedCourse : null, 
-    };
+    const exists = subjects.some(
+      (s) =>
+        s.code.toLowerCase() === newSubject.code.toLowerCase() &&
+        s.category === activeTab
+    );
 
-    setSubjects([...subjects, subjectToAdd]);
-    setNewSubject({ ...newSubject, code: "", name: "" }); // Reset code/name only
+    if (exists) {
+      alert("Duplicate subject not allowed");
+      return;
+    }
+
+    setSubjects([
+      ...subjects,
+      {
+        ...newSubject,
+        masterSubjectId: null, // This will be flagged by validation if submitted
+        category: activeTab,
+        id: Date.now(),
+      },
+    ]);
+
+    setNewSubject({ ...newSubject, code: "", name: "" });
   };
 
-  // --- 7. DELETE SUBJECT ---
   const removeSubject = (id) => {
     setSubjects(subjects.filter((s) => s.id !== id));
   };
 
-  // --- 8. FINAL SUBMIT ---
-  const handleSubmit = () => {
-    if (subjects.length === 0) return;
+  // --- 6. FINAL SUBMIT (WITH HARD VALIDATION) ---
+  const handleSubmit = async () => {
+    if (!selectedCourse || !semester) {
+      alert("Select course and semester");
+      return;
+    }
+
+    if (!subjects || subjects.length === 0) {
+      alert("No subjects added");
+      return;
+    }
+
+    // 🔥 STEP 3 FIX: HARD VALIDATION
+    const invalid = subjects.filter((s) => !s.masterSubjectId);
+
+    if (invalid.length > 0) {
+      console.log("INVALID SUBJECTS:", invalid);
+      alert("All subjects must come from Master Subjects. Please select from the available pool.");
+      return;
+    }
 
     const payload = subjects.map((s) => ({
+      masterSubjectId: s.masterSubjectId, 
       code: s.code,
       name: s.name,
-      department: s.department || "General",
+      department: s.department,
       category: s.category,
       lectureHours: s.lecture,
       tutorialHours: s.tutorial,
       practicalHours: s.practical,
       preferredRoomType: s.preferredRoom,
-      courseId: s.category === "CORE" ? s.courseId : null, // Crucial for Solver logic
-      semester: s.category === "CORE" ? semester : null,   // Electives are usually global
+      courseId: selectedCourse,
+      semester: semester,
     }));
 
-    goToNextStep(payload, dataService.saveSubjects);
+    console.log("SUBMIT DATA:", payload);
+
+    try {
+      await goToNextStep(payload, dataService.saveSubjects);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const filteredSubjects = subjects.filter((s) => s.category === activeTab);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      
-      {/* 1 & 2: COURSE & SEMESTER SELECTION */}
+      {/* SELECTION HEADER */}
       <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-wrap items-end gap-4">
         <div className="space-y-1 flex-1 min-w-[200px]">
           <label className="text-[10px] font-bold text-gray-400 uppercase">Target Course</label>
@@ -154,20 +299,24 @@ const SubjectManager = () => {
           onClick={fetchCoreSubjects}
           className="px-6 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 border border-green-200 dark:border-green-800 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-green-100 transition-all"
         >
-          <Sparkles size={16}/> Load Core Subjects
+          <Sparkles size={16} /> Load Core Subjects
         </button>
       </div>
 
-      {/* 5: CATEGORY TABS */}
+      {/* TABS */}
       <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl w-full max-w-2xl mx-auto">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
-            onClick={() => setActiveTab(cat)}
+            onClick={() => {
+              setActiveTab(cat);
+              setSelectedElectives([]); 
+              if (cat !== "CORE") fetchElectives(cat);
+            }}
             className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === cat
                 ? "bg-white dark:bg-gray-700 text-green-600 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                : "text-gray-500"
             }`}
           >
             {cat}
@@ -175,60 +324,168 @@ const SubjectManager = () => {
         ))}
       </div>
 
+      {/* ELECTIVE POOL SELECTION UI */}
+      {activeTab !== "CORE" && electivePool.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-green-100 dark:border-green-900/30 p-6 rounded-2xl animate-in slide-in-from-top-4 duration-300">
+          <h3 className="text-sm font-bold dark:text-white mb-4 flex items-center gap-2">
+            <CheckCircle2 size={18} className="text-green-500" /> Select available {activeTab} Subjects
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {electivePool.map((sub) => (
+              <label
+                key={sub.id}
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  selectedElectives.includes(sub.id)
+                    ? "bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800"
+                    : "bg-gray-50 dark:bg-gray-800 border-transparent"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  checked={selectedElectives.includes(sub.id)}
+                  onChange={() => {
+                    if (selectedElectives.includes(sub.id)) {
+                      setSelectedElectives(selectedElectives.filter((id) => id !== sub.id));
+                      setSubjects((prev) =>
+                        prev.filter((s) => !(s.masterSubjectId === sub.id && s.category === sub.defaultCategory))
+                      );
+                    } else {
+                      setSelectedElectives([...selectedElectives, sub.id]);
+                      setSubjects((prev) => {
+                        if (prev.some((s) => s.masterSubjectId === sub.id)) return prev;
+                        // 🔥 STEP 1 FIX: UPDATED OBJECT STRUCTURE
+                        return [
+                          ...prev,
+                          {
+                            id: sub.id,
+                            masterSubjectId: sub.id, // 🔥 THIS FIXES EVERYTHING
+                            code: sub.code,
+                            name: sub.name,
+                            department: sub.department,
+                            category: sub.defaultCategory,
+                            lecture: sub.lectureHours,
+                            tutorial: sub.tutorialHours,
+                            practical: sub.practicalHours,
+                            preferredRoom: sub.preferredRoomType,
+                          },
+                        ];
+                      });
+                    }
+                  }}
+                />
+                <div className="flex-1">
+                  <p className="text-xs font-bold dark:text-white">{sub.code}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{sub.name}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* 6: MANUAL INPUT SIDEBAR */}
+        {/* INPUT SIDEBAR */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-            <h3 className="font-bold dark:text-white mb-6 flex items-center gap-2">
-              <Plus size={18} className="text-green-600"/> Add {activeTab}
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">Code & Name</label>
-                <div className="flex gap-2">
-                  <input placeholder="CS101" value={newSubject.code} onChange={e => setNewSubject({...newSubject, code: e.target.value.toUpperCase()})} className="w-1/3 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none dark:text-white focus:ring-2 focus:ring-green-500"/>
-                  <input placeholder="Subject Name" value={newSubject.name} onChange={e => setNewSubject({...newSubject, name: e.target.value})} className="w-2/3 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none dark:text-white focus:ring-2 focus:ring-green-500"/>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">L</label>
-                  <input type="number" value={newSubject.lecture} onChange={e => setNewSubject({...newSubject, lecture: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-center dark:text-white"/>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">T</label>
-                  <input type="number" value={newSubject.tutorial} onChange={e => setNewSubject({...newSubject, tutorial: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-center dark:text-white"/>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">P</label>
-                  <input type="number" value={newSubject.practical} onChange={e => setNewSubject({...newSubject, practical: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-center dark:text-white"/>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">Room Type</label>
-                <select value={newSubject.preferredRoom} onChange={e => setNewSubject({...newSubject, preferredRoom: e.target.value})} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none dark:text-white">
-                  {ROOM_TYPES.map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
-                </select>
-              </div>
-
-              <button onClick={handleAddSubject} className="w-full py-3 bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-500/20 hover:bg-green-700 transition-all flex items-center justify-center gap-2">
-                <Plus size={18}/> Add to Catalog
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold dark:text-white flex items-center gap-2">
+                {showBulk ? <Upload size={18} className="text-green-600" /> : <Plus size={18} className="text-green-600" />}
+                {showBulk ? "Bulk Import" : activeTab === "CORE" ? "Manual Add" : "Import Subjects"}
+              </h3>
+              <button
+                onClick={() => setShowBulk(!showBulk)}
+                className="text-[10px] font-bold uppercase text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-lg"
+              >
+                {showBulk ? "Manual Entry" : "Excel Import"}
               </button>
             </div>
+
+            {showBulk ? (
+              <div className="space-y-4">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center hover:border-green-500 cursor-pointer group"
+                >
+                  <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelUpload} />
+                  <FileSpreadsheet className="mx-auto text-gray-300 group-hover:text-green-500 mb-2" size={40} />
+                  <p className="text-sm font-medium dark:text-gray-300">Click to upload Excel</p>
+                </div>
+                <button
+                  onClick={downloadTemplate}
+                  className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
+                >
+                  <Download size={14} /> Download Template
+                </button>
+              </div>
+            ) : activeTab === "CORE" ? (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Code & Name</label>
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="CS101"
+                      value={newSubject.code}
+                      onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value.toUpperCase() })}
+                      className="w-1/3 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                    <input
+                      placeholder="Subject Name"
+                      value={newSubject.name}
+                      onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
+                      className="w-2/3 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {["lecture", "tutorial", "practical"].map((key) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase text-center block">{key[0]}</label>
+                      <input
+                        type="number"
+                        value={newSubject[key]}
+                        onChange={(e) => setNewSubject({ ...newSubject, [key]: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-center dark:text-white"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Room Type</label>
+                  <select
+                    value={newSubject.preferredRoom}
+                    onChange={(e) => setNewSubject({ ...newSubject, preferredRoom: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none dark:text-white"
+                  >
+                    {ROOM_TYPES.map((r) => (
+                      <option key={r} value={r}>{r.replace("_", " ")}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleAddSubject}
+                  className="w-full py-3 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <Plus size={18} /> Add Subject
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Info size={32} className="mx-auto text-gray-300 mb-2" />
+                <p className="text-xs text-gray-500">
+                  Please use the checkbox pool above or Excel Import for {activeTab} subjects.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 4: SUBJECT LIST TABLE */}
+        {/* LIST TABLE */}
         <div className="lg:col-span-8">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
             <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <h3 className="font-bold dark:text-white">{activeTab} List ({filteredSubjects.length})</h3>
-              <Info size={16} className="text-gray-400" />
             </div>
-
             <div className="overflow-x-auto max-h-[400px]">
               <table className="w-full text-left">
                 <thead className="sticky top-0 bg-white dark:bg-gray-900 text-[10px] uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800">
@@ -242,7 +499,7 @@ const SubjectManager = () => {
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                   {filteredSubjects.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-12 text-center text-gray-400 text-sm">
+                      <td colSpan="4" className="px-6 py-12 text-center text-gray-400 text-sm italic">
                         No subjects added to this category yet.
                       </td>
                     </tr>
@@ -260,8 +517,8 @@ const SubjectManager = () => {
                             <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 px-1.5 py-0.5 rounded text-[10px] font-bold">P:{s.practical}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-[10px] font-medium dark:text-gray-400">
-                          {s.preferredRoom.replace('_', ' ')}
+                        <td className="px-6 py-4 text-[10px] font-medium dark:text-gray-400 uppercase">
+                          {s.preferredRoom.replace("_", " ")}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button onClick={() => removeSubject(s.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
@@ -276,15 +533,18 @@ const SubjectManager = () => {
             </div>
           </div>
 
-          {/* NAVIGATION FOOTER */}
+          {/* FOOTER */}
           <div className="flex justify-between items-center mt-8">
-            <button onClick={goToPrevStep} className="px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 transition-all flex items-center gap-2">
+            <button
+              onClick={goToPrevStep}
+              className="px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold flex items-center gap-2 hover:bg-gray-100 transition-all"
+            >
               <ChevronLeft size={20} /> Back
             </button>
-            <button 
-              onClick={handleSubmit} 
+            <button
+              onClick={handleSubmit}
               disabled={subjects.length === 0 || isLoading}
-              className="px-8 py-3 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-bold shadow-lg shadow-green-500/30 hover:scale-[1.02] disabled:opacity-50 transition-all flex items-center gap-2"
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-bold shadow-lg hover:scale-[1.02] disabled:opacity-50 transition-all flex items-center gap-2"
             >
               {isLoading ? "Saving Catalog..." : "Save & Next"} <ChevronRight size={20} />
             </button>

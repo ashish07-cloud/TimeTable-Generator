@@ -28,4 +28,20 @@ router.get(
   dataController.getCoreSubjects
 );
 
+router.get("/electives", protect, dataController.getElectives);
+
+router.post("/faculty", protect, dataController.saveFaculty);
+
+router.get("/subjects-faculty", protect, dataController.getSubjectsForFaculty);
+
+
+router.post("/enrollment", protect, dataController.saveEnrollment);
+
+router.get("/enrollment", protect, dataController.getEnrollment);
+
+router.get("/institution", protect, dataController.getInstitution);
+router.get("/rooms", protect, dataController.getRooms);
+router.get("/subjects", protect, dataController.getSubjects);
+router.get("/faculty", protect, dataController.getFaculty);
+
 module.exports = router;

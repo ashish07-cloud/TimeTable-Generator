@@ -19,10 +19,14 @@ const dataService = {
   },
 
   getCoreSubjects: async (courseId, semester) => {
-  return await api.get(
-    `/data/core-subjects?courseId=${courseId}&semester=${semester}`
-  );
-},
+    return await api.get(
+      `/data/core-subjects?courseId=${courseId}&semester=${semester}`,
+    );
+  },
+
+  getElectives: async () => {
+    return await api.get("/data/electives");
+  },
 
   // 🔹 FUTURE (placeholders for consistency)
 
@@ -34,8 +38,32 @@ const dataService = {
     return await api.post("/data/faculty", { faculty });
   },
 
+  getSubjectsForFaculty: async () => {
+    return await api.get("/data/subjects-faculty");
+  },
+
   saveEnrollment: async (enrollment) => {
     return await api.post("/data/enrollment", { enrollment });
+  },
+
+  getEnrollment: async () => {
+    return await api.get("/data/enrollment");
+  },
+
+  getInstitution: async () => {
+    return await api.get("/data/institution");
+  },
+
+  getRooms: async () => {
+    return await api.get("/data/rooms");
+  },
+
+  getSubjects: async () => {
+    return await api.get("/data/subjects");
+  },
+
+  getFaculty: async () => {
+    return await api.get("/data/faculty");
   },
 };
 

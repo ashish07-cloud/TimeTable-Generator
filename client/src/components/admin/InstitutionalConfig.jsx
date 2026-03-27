@@ -76,6 +76,14 @@ const InstitutionalConfig = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+  const load = async () => {
+    const res = await dataService.getInstitution();
+    if (res.data) setForm(res.data);
+  };
+  load();
+}, []);
+
   // 🔹 Toggle Day
   const toggleDay = (day) => {
     if (isLocked) return;

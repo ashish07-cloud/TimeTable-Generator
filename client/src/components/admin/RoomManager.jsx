@@ -39,6 +39,14 @@ const RoomManager = ({ onNext, onPrev, isLoading: parentLoading }) => {
 
   const combinedLoading = parentLoading || isProcessing;
 
+  useEffect(() => {
+  const load = async () => {
+    const res = await dataService.getRooms();
+    setRooms(res.data || []);
+  };
+  load();
+}, []);
+
   const handleSubmit = async () => {
     if (rooms.length === 0) return;
 

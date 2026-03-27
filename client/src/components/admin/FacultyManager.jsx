@@ -1,276 +1,401 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Users, UserPlus, GraduationCap, Search, 
-  Trash2, ChevronLeft, ChevronRight, Check,
-  AlertTriangle, BookOpen, UserCheck, Plus, X
-} from 'lucide-react';
-import BulkUploadZone from './BulkUploadZone';
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  UserCheck,
+  BookOpen,
+  AlertCircle,
+  Loader2,
+  FileSpreadsheet,
+  Search,
+  Users,
+  Filter,
+} from "lucide-react";
+import { useOnboarding } from "../../hooks/useOnboarding";
+import dataService from "../../api/dataService";
+import BulkUploadZone from "./BulkUploadZone";
 
-const FacultyManager = ({ subjects = [], onNext, onPrev, isLoading }) => {
+const FacultyManager = () => {
+  const {
+    goToNextStep,
+    goToPrevStep,
+    isLoading: isSubmitting,
+  } = useOnboarding();
+
+  // --- STATE ---
   const [facultyList, setFacultyList] = useState([]);
   const [selectedFacultyId, setSelectedFacultyId] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showBulk, setShowBulk] = useState(false);
-  
-  // State for manual addition
-  const [showManualForm, setShowManualForm] = useState(false);
-  const [newFaculty, setNewFaculty] = useState({ name: '', department: '', maxLoad: 18 });
+  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [fetchingSubjects, setFetchingSubjects] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // 1. Logic: Find selected faculty and calculate their current load
-  const selectedFaculty = useMemo(() => 
-    facultyList.find(f => f.id === selectedFacultyId), 
-    [facultyList, selectedFacultyId]
+  // --- 1. SYNC SUBJECTS FROM DATABASE ---
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setFetchingSubjects(true);
+        // Fetches subjects saved in Step 3 to derive departments and enable mapping
+        const res = await dataService.getSubjects();
+        setAvailableSubjects(res.data || []);
+      } catch (err) {
+        console.error("Critical Error: Could not sync subject catalog.", err);
+      } finally {
+        setFetchingSubjects(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // --- 2. DYNAMIC LOGIC ---
+  const selectedFaculty = useMemo(
+    () => facultyList.find((f) => f.tempId === selectedFacultyId),
+    [facultyList, selectedFacultyId],
   );
 
-  const calculateLoad = (fac) => {
-    if (!fac.expertiseIds || !subjects) return 0;
-    // Added safety check (subjects || []) to prevent the 'filter' of undefined error
-    return (subjects || [])
-      .filter(s => fac.expertiseIds.includes(s.id))
-      .reduce((acc, s) => acc + (Number(s.lecture || 0) + Number(s.tutorial || 0) + Number(s.practical || 0)), 0);
-  };
+  // Auto-filter subjects matching the selected faculty's department
+  const subjectsInDept = useMemo(() => {
+    if (!selectedFaculty) return [];
+    return availableSubjects.filter(
+      (s) => s.department === selectedFaculty.department,
+    );
+  }, [availableSubjects, selectedFaculty]);
 
-  // 2. Logic: Toggle expertise assignment
-  const toggleSubjectExpertise = (subjectId) => {
-    setFacultyList(prev => prev.map(f => {
-      if (f.id !== selectedFacultyId) return f;
-      const expertiseIds = f.expertiseIds || [];
-      return {
-        ...f,
-        expertiseIds: expertiseIds.includes(subjectId)
-          ? expertiseIds.filter(id => id !== subjectId)
-          : [...expertiseIds, subjectId]
-      };
+  useEffect(() => {
+  const load = async () => {
+    const res = await dataService.getFaculty();
+
+    const formatted = res.data.map((f) => ({
+      ...f,
+      subjectIds: f.QualifiedSubjects?.map((s) => s.id) || [],
     }));
+
+    setFaculty(formatted);
   };
 
-  // 3. Logic: Handle Manual Addition
-  const handleManualAdd = (e) => {
-    e.preventDefault();
-    if (!newFaculty.name || !newFaculty.department) return;
-    
-    const facultyEntry = {
-      ...newFaculty,
-      id: Date.now() + Math.random(),
-      expertiseIds: [],
-      maxLoad: Number(newFaculty.maxLoad) || 18
-    };
+  load();
+}, []);
 
-    setFacultyList(prev => [...prev, facultyEntry]);
-    setNewFaculty({ name: '', department: '', maxLoad: 18 });
-    setShowManualForm(false);
+  // Search/Filter faculty list
+  const filteredFacultyList = useMemo(() => {
+    return facultyList.filter(
+      (f) =>
+        f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.department.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [facultyList, searchTerm]);
+
+  // --- 3. HANDLERS ---
+  const handleBulkUpload = (data) => {
+    const seenEmails = new Set();
+    const seenIds = new Set();
+    const duplicates = [];
+
+    const normalized = data.map((d, index) => {
+      const email = d.email?.trim().toLowerCase();
+      const empId = d.employeeId?.toString().trim();
+
+      // Check for duplicates within the CSV itself
+      if (seenEmails.has(email)) duplicates.push(`Duplicate Email: ${email}`);
+      if (seenIds.has(empId)) duplicates.push(`Duplicate ID: ${empId}`);
+
+      seenEmails.add(email);
+      seenIds.add(empId);
+
+      return {
+        tempId: `fac-${Date.now()}-${index}`,
+        name: d.name?.trim() || "",
+        email: email || "",
+        employeeId: empId || "",
+        department: d.department?.trim() || "",
+        designation: d.designation?.trim() || "Assistant Professor",
+        maxWeeklyLoad: parseInt(d.maxWeeklyLoad) || 16,
+        expertiseIds: [],
+      };
+    });
+
+    if (duplicates.length > 0) {
+      alert(
+        "Upload Blocked! Found duplicates in CSV:\n" + duplicates.join("\n"),
+      );
+      return;
+    }
+
+    // Continue with validation and setting state...
+    const valid = normalized.every(
+      (f) => f.name && f.email && f.employeeId && f.department,
+    );
+    if (!valid) {
+      alert("Validation Error: Some rows are missing mandatory fields.");
+      return;
+    }
+
+    setFacultyList(normalized);
+  };
+
+  const toggleSubject = (subjectId) => {
+    setFacultyList((prev) =>
+      prev.map((f) => {
+        if (f.tempId !== selectedFacultyId) return f;
+        const exists = f.expertiseIds.includes(subjectId);
+        return {
+          ...f,
+          expertiseIds: exists
+            ? f.expertiseIds.filter((id) => id !== subjectId)
+            : [...f.expertiseIds, subjectId],
+        };
+      }),
+    );
+  };
+
+  const handleFinalSave = () => {
+    if (facultyList.length === 0)
+      return alert("Please upload the faculty CSV first.");
+
+    const payload = facultyList.map((f) => ({
+      name: f.name,
+      email: f.email,
+      employeeId: f.employeeId,
+      department: f.department,
+      designation: f.designation,
+      maxWeeklyLoad: f.maxWeeklyLoad,
+      expertiseIds: f.expertiseIds,
+    }));
+
+    goToNextStep(payload, dataService.saveFaculty);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* TOP BAR: STATS & UPLOAD */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
+            <Users size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase">
+              Total Faculty
+            </p>
+            <p className="text-2xl font-black dark:text-white">
+              {facultyList.length}
+            </p>
+          </div>
+        </div>
+
+        <div className="md:col-span-2 bg-gradient-to-r from-green-600 to-green-800 p-1 rounded-2xl shadow-lg shadow-green-500/20">
+          <div className="bg-white dark:bg-gray-900 rounded-[14px] h-full flex items-center px-4 py-2">
+            <BulkUploadZone
+              type="Faculty"
+              onUpload={handleBulkUpload}
+              customLabel="Click to Upload Faculty CSV"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* LEFT COLUMN: FACULTY LIST */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* LEFT: SEARCHABLE LIST */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col h-[600px]">
-            <div className="p-5 border-b border-gray-100 dark:border-gray-800 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold dark:text-white flex items-center gap-2">
-                  <Users size={18} className="text-green-600" /> Faculty Directory
-                </h3>
-                <div className="flex gap-2">
-                   <button 
-                    onClick={() => { setShowManualForm(!showManualForm); setShowBulk(false); }}
-                    className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md flex items-center gap-1"
-                  >
-                    {showManualForm ? <X size={12}/> : <Plus size={12}/>} Manual
-                  </button>
-                  <button 
-                    onClick={() => { setShowBulk(!showBulk); setShowManualForm(false); }}
-                    className="text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-md"
-                  >
-                    {showBulk ? 'List View' : 'Bulk Import'}
-                  </button>
-                </div>
+            <div className="p-4 border-b dark:border-gray-800">
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
+                <input
+                  placeholder="Search name or department..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500 dark:text-white"
+                />
               </div>
-              
-              {!showManualForm && !showBulk && (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                  <input 
-                    placeholder="Search by name or department..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-green-500 outline-none dark:text-white"
-                  />
-                </div>
-              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
-              {showBulk ? (
-                <div className="p-4">
-                  <BulkUploadZone type="Faculty" onUpload={(data) => {
-                    setFacultyList([...facultyList, ...data.map(d => ({ ...d, id: Date.now() + Math.random(), expertiseIds: [] }))]);
-                    setShowBulk(false);
-                  }} />
-                </div>
-              ) : showManualForm ? (
-                <div className="p-4 animate-in fade-in slide-in-from-top-2">
-                  <form onSubmit={handleManualAdd} className="space-y-3 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase">Faculty Name</label>
-                      <input 
-                        autoFocus
-                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm mt-1 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                        placeholder="e.g. Dr. Robert Fox"
-                        value={newFaculty.name}
-                        onChange={e => setNewFaculty({...newFaculty, name: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase">Department</label>
-                      <input 
-                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm mt-1 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                        placeholder="e.g. Computer Science"
-                        value={newFaculty.department}
-                        onChange={e => setNewFaculty({...newFaculty, department: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase">Max Weekly Hours</label>
-                      <input 
-                        type="number"
-                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm mt-1 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                        value={newFaculty.maxLoad}
-                        onChange={e => setNewFaculty({...newFaculty, maxLoad: e.target.value})}
-                      />
-                    </div>
-                    <button 
-                      type="submit"
-                      disabled={!newFaculty.name || !newFaculty.department}
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors"
-                    >
-                      Add Faculty Member
-                    </button>
-                  </form>
+            <div className="flex-1 overflow-y-auto custom-scrollbar divide-y dark:divide-gray-800">
+              {filteredFacultyList.length === 0 ? (
+                <div className="p-10 text-center flex flex-col items-center">
+                  <FileSpreadsheet size={40} className="text-gray-200 mb-2" />
+                  <p className="text-xs text-gray-400">
+                    No faculty data. Please upload a CSV to begin.
+                  </p>
                 </div>
               ) : (
-                facultyList
-                  .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()) || f.department.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map(fac => {
-                    const load = calculateLoad(fac);
-                    const isOverloaded = load > fac.maxLoad;
-                    return (
-                      <button
-                        key={fac.id}
-                        onClick={() => setSelectedFacultyId(fac.id)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all ${
-                          selectedFacultyId === fac.id 
-                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 ring-1 ring-green-500' 
-                          : 'bg-white dark:bg-gray-900 border-transparent hover:border-gray-200 dark:hover:border-gray-700'
-                        }`}
+                filteredFacultyList.map((f) => (
+                  <div
+                    key={f.tempId}
+                    onClick={() => setSelectedFacultyId(f.tempId)}
+                    className={`p-4 cursor-pointer flex justify-between items-center transition-all ${selectedFacultyId === f.tempId ? "bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
+                  >
+                    <div className="overflow-hidden">
+                      <p
+                        className={`font-bold text-sm truncate ${selectedFacultyId === f.tempId ? "text-green-700 dark:text-green-400" : "dark:text-white"}`}
                       >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-bold text-sm dark:text-white">{fac.name}</p>
-                            <p className="text-[10px] text-gray-500 uppercase font-semibold">{fac.department}</p>
-                          </div>
-                          {isOverloaded && <AlertTriangle size={14} className="text-amber-500" />}
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[9px] font-bold uppercase">
-                            <span className={isOverloaded ? 'text-red-500' : 'text-gray-400'}>Weekly Load</span>
-                            <span className="dark:text-gray-400">{load} / {fac.maxLoad} hrs</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all duration-500 ${isOverloaded ? 'bg-red-500' : 'bg-green-500'}`} 
-                              style={{ width: `${Math.min((load / fac.maxLoad) * 100, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-              )}
-              
-              {!showBulk && !showManualForm && facultyList.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 text-center">
-                  <UserPlus size={32} className="mb-2 opacity-20" />
-                  <p className="text-xs italic">No faculty added yet. Use Bulk Import or Manual Add to get started.</p>
-                </div>
+                        {f.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded font-bold uppercase">
+                          {f.department}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold ${f.expertiseIds.length > 0 ? "text-green-600" : "text-orange-400"}`}
+                        >
+                          {f.expertiseIds.length} Subjects
+                        </span>
+                      </div>
+                    </div>
+                    <UserCheck
+                      size={16}
+                      className={
+                        selectedFacultyId === f.tempId
+                          ? "text-green-500"
+                          : "text-gray-200"
+                      }
+                    />
+                  </div>
+                ))
               )}
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: EXPERTISE MAPPER */}
-        <div className="lg:col-span-7">
-          {selectedFaculty ? (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col h-[600px] animate-in fade-in zoom-in-95 duration-300">
-              <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 rounded-t-2xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold text-lg">
-                    {selectedFaculty.name.charAt(0)}
+        {/* RIGHT: THE EXPERTISE WORKSPACE */}
+        <div className="lg:col-span-8">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm h-[600px] flex flex-col">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold dark:text-white flex items-center gap-2 text-lg">
+                  <BookOpen size={20} className="text-green-600" /> Teaching
+                  Expertise
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Assign subjects taught by the selected faculty.
+                </p>
+              </div>
+              {selectedFaculty && (
+                <div className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-[10px] font-black uppercase tracking-tighter">
+                  Load: {selectedFaculty.maxWeeklyLoad} Hrs/Wk
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto bg-gray-50/30 dark:bg-transparent">
+              {fetchingSubjects ? (
+                <div className="h-full flex flex-col items-center justify-center">
+                  <Loader2
+                    size={32}
+                    className="animate-spin text-green-600 mb-2"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Loading Subject Catalog...
+                  </p>
+                </div>
+              ) : !selectedFaculty ? (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                  <div className="p-6 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
+                    <Filter size={48} strokeWidth={1} className="opacity-20" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-lg dark:text-white">{selectedFaculty.name}</h3>
-                    <p className="text-sm text-gray-500">Assign subjects this faculty is qualified to teach.</p>
+                  <p className="font-medium">
+                    Select a faculty member from the list
+                  </p>
+                  <p className="text-xs">
+                    Subjects will auto-filter based on their department.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Info Header */}
+                  <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                    <div>
+                      <p className="text-[10px] font-black text-green-600 uppercase">
+                        Department Focus
+                      </p>
+                      <p className="text-xl font-bold dark:text-white">
+                        {selectedFaculty.department}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">
+                        Employee ID
+                      </p>
+                      <p className="font-mono text-sm dark:text-gray-300">
+                        {selectedFaculty.employeeId}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Subject Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {subjectsInDept.length === 0 ? (
+                      <div className="col-span-full py-20 text-center border-2 border-dashed rounded-2xl border-gray-200 dark:border-gray-800">
+                        <AlertCircle
+                          size={32}
+                          className="mx-auto text-orange-400 mb-2"
+                        />
+                        <p className="text-sm text-gray-500 font-medium">
+                          No subjects found for "{selectedFaculty.department}"
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Check if the department name in CSV matches Step 3
+                          exactly.
+                        </p>
+                      </div>
+                    ) : (
+                      subjectsInDept.map((sub) => {
+                        const isSelected =
+                          selectedFaculty.expertiseIds.includes(sub.id);
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => toggleSubject(sub.id)}
+                            className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left ${
+                              isSelected
+                                ? "bg-green-600 border-green-600 text-white shadow-md"
+                                : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-green-500"
+                            }`}
+                          >
+                            <div>
+                              <p
+                                className={`font-bold text-sm ${isSelected ? "text-white" : "dark:text-white"}`}
+                              >
+                                {sub.code}
+                              </p>
+                              <p
+                                className={`text-[10px] ${isSelected ? "text-green-100" : "text-gray-500"} truncate max-w-[200px]`}
+                              >
+                                {sub.name}
+                              </p>
+                            </div>
+                            {isSelected && <CheckCircle2 size={18} />}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
-              </div>
-
-              <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(subjects || []).map(subject => {
-                    const isAssigned = (selectedFaculty.expertiseIds || []).includes(subject.id);
-                    return (
-                      <button
-                        key={subject.id}
-                        onClick={() => toggleSubjectExpertise(subject.id)}
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
-                          isAssigned 
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/10' 
-                          : 'border-gray-100 dark:border-gray-800 hover:border-green-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${isAssigned ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                            <BookOpen size={14} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold dark:text-white">{subject.code}</p>
-                            <p className="text-[10px] text-gray-500 truncate max-w-[120px]">{subject.name}</p>
-                          </div>
-                        </div>
-                        {isAssigned && <Check size={16} className="text-green-600" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-gray-100 dark:border-gray-800 text-center">
-                <p className="text-[10px] text-gray-400 italic">Expertise updates are saved automatically.</p>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="h-[600px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900/50 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-gray-400">
-              <UserCheck size={48} strokeWidth={1} className="mb-4" />
-              <p className="font-medium text-sm">Select a faculty member from the list to map expertise.</p>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* FOOTER NAVIGATION */}
       <div className="flex justify-between items-center mt-8">
-        <button onClick={onPrev} className="px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 transition-all flex items-center gap-2">
+        <button
+          onClick={goToPrevStep}
+          className="px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 transition-all flex items-center gap-2"
+        >
           <ChevronLeft size={20} /> Back
         </button>
-        <button 
-          onClick={() => onNext(facultyList)} 
-          disabled={facultyList.length === 0 || isLoading} 
-          className="px-8 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-700 text-white font-bold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02] disabled:opacity-50 transition-all flex items-center gap-2"
+        <button
+          onClick={handleFinalSave}
+          disabled={facultyList.length === 0 || isSubmitting}
+          className="px-8 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-700 text-white font-bold shadow-lg shadow-green-500/30 hover:scale-[1.02] disabled:opacity-50 transition-all flex items-center gap-2"
         >
-          {isLoading ? 'Finalizing Directory...' : 'Save & Next'} <ChevronRight size={20} />
+          {isSubmitting ? "Syncing Data..." : "Save & Finalize Registry"}{" "}
+          <ChevronRight size={20} />
         </button>
       </div>
     </div>

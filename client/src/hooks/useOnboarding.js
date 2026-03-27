@@ -11,56 +11,87 @@ export const STEPS = {
 
 export const useOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(STEPS.INSTITUTION);
+  const [progress, setProgress] = useState(null); // 🔥 FULL DATA STATE
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 🔥 ALWAYS TRUST BACKEND
-const fetchProgress = useCallback(async () => {
-  try {
-    const res = await dataService.getProgress();
-
-    if (res?.data?.step) {
-      setCurrentStep(res.data.step); // 🔥 THIS IS KEY
-    }
-
-    return res.data; // 🔥 return data for UI use
-  } catch (err) {
-    console.error("Progress fetch failed");
-  }
-}, []);
-
-  // 🔥 SAVE + REFETCH (NO LOCAL STEP CHANGE)
-  const goToNextStep = useCallback(async (data, saveFn) => {
+  // 🔥 FETCH COMPLETE PROGRESS (SOURCE OF TRUTH)
+  const fetchProgress = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      if (saveFn && data) {
-        await saveFn(data); // save to backend
+      const res = await dataService.getProgress();
+      const data = res?.data;
+      console.log("RAW API:", res);
+console.log("DATA:", res.data);
+
+      if (!data) throw new Error("Invalid progress response");
+
+      // 🔥 STORE FULL DATA
+      setProgress(data);
+
+      // 🔥 STEP SYNC
+      if (data.step) {
+        setCurrentStep(data.step);
       }
 
-      // 🔥 REFRESH FROM BACKEND (source of truth)
-      await fetchProgress();
+      return data;
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save");
+      console.error("❌ Progress fetch failed:", err);
+      setError(err.response?.data?.message || "Failed to fetch progress");
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProgress]);
+  }, []);
 
+  // 🔥 SAVE + REFRESH (NO LOCAL STATE TRUST)
+  const goToNextStep = useCallback(
+    async (data, saveFn) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        if (saveFn && data) {
+          await saveFn(data); // 🔥 save to backend
+        }
+
+        // 🔥 ALWAYS REFETCH AFTER SAVE
+        const updated = await fetchProgress();
+
+        if (!updated) {
+          throw new Error("Failed to refresh progress");
+        }
+      } catch (err) {
+        console.error("❌ Step transition failed:", err);
+        setError(err.response?.data?.message || "Failed to save step");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchProgress]
+  );
+
+  // 🔥 OPTIONAL BACK NAVIGATION
   const goToPrevStep = useCallback(() => {
-    // 🔥 optional (not needed in locked flow)
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, STEPS.INSTITUTION));
   }, []);
 
   return {
+    // 🔹 STATE
     currentStep,
+    progress,
     isLoading,
     error,
+
+    // 🔹 ACTIONS
+    fetchProgress,
     goToNextStep,
     goToPrevStep,
-    fetchProgress,
-    isFirstStep: currentStep === 1,
-    isLastStep: currentStep === 5,
+
+    // 🔹 HELPERS
+    isFirstStep: currentStep === STEPS.INSTITUTION,
+    isLastStep: currentStep === STEPS.ENROLLMENT,
   };
 };

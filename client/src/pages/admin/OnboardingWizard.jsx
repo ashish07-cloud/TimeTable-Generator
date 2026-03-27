@@ -12,26 +12,25 @@ const stepRoutes = [
 ];
 
 const OnboardingWizard = () => {
-  const { currentStep, fetchProgress, error } = useOnboarding();
+  const { currentStep, fetchProgress, error, progress } = useOnboarding();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🔥 Load progress from backend
+  // 🔥 LOAD BACKEND STATE (ONLY ONCE)
   useEffect(() => {
     fetchProgress();
   }, []);
 
-  // 🔥 Sync URL with backend step
+  // 🔥 SYNC STEP WITH URL (IMPORTANT FIX)
   useEffect(() => {
-    if (!currentStep) return;
+    const path = location.pathname.split("/").pop();
+    const stepIndex = stepRoutes.indexOf(path) + 1;
 
-    const correctPath = `/admin/setup/${stepRoutes[currentStep - 1]}`;
-
-    // If user directly hits wrong URL → redirect
-    if (location.pathname !== correctPath) {
-      navigate(correctPath, { replace: true });
+    // If user enters invalid route → redirect to correct step
+    if (stepIndex === 0 && currentStep) {
+      navigate(`/admin/setup/${stepRoutes[currentStep - 1]}`);
     }
-  }, [currentStep]);
+  }, [location.pathname, currentStep]);
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
@@ -58,7 +57,11 @@ const OnboardingWizard = () => {
 
       {/* Step Content */}
       <div className="mt-8">
-        <Outlet />
+        <Outlet
+          context={{
+            progress, // 🔥 ALL DATA AVAILABLE TO CHILD COMPONENTS
+          }}
+        />
       </div>
     </div>
   );
