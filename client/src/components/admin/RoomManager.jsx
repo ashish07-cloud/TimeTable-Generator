@@ -15,7 +15,7 @@ import {
 import { useOutletContext } from "react-router-dom";
 import BulkUploadZone from "./BulkUploadZone";
 import dataService from "../../api/dataService";
-import * as XLSX from "xlsx"; // For template generation
+import * as XLSX from "xlsx";
 
 const ROOM_TYPES = [
   "LECTURE_HALL",
@@ -69,14 +69,12 @@ const RoomManager = () => {
     const normalized = data.map((r, index) => ({
       id: Date.now() + index,
       roomNumber: String(r.room_number || r.roomNumber || "").toUpperCase(),
-      // Ensure room type matches the ENUM exactly
       roomType: String(r.room_type || r.roomType || "LECTURE_HALL").toUpperCase().replace(/\s+/g, "_"),
       capacity: parseInt(r.capacity, 10) || 60,
       building: r.building || "",
       floor: r.floor ? parseInt(r.floor, 10) : null,
     }));
 
-    // Filter out duplicates (based on roomNumber)
     const existingNumbers = new Set(rooms.map(r => r.roomNumber));
     const uniqueNew = normalized.filter(r => !existingNumbers.has(r.roomNumber));
 
@@ -119,7 +117,6 @@ const RoomManager = () => {
       return;
     }
 
-    // STRICT DATA CLEANING
     const payload = rooms.map((r) => {
       const parsedFloor = parseInt(r.floor, 10);
       return {
@@ -164,7 +161,7 @@ const RoomManager = () => {
         <div className="bg-white dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-4 shadow-sm">
           <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"><Users size={20} /></div>
           <div>
-            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Capacity</p>
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Capacity</p>
             <p className="text-xl font-bold dark:text-white">{rooms.reduce((acc, r) => acc + parseInt(r.capacity || 0), 0)}</p>
           </div>
         </div>
@@ -178,7 +175,6 @@ const RoomManager = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* INPUT SIDEBAR */}
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm sticky top-4">
             <div className="flex justify-between items-center mb-6">
@@ -200,15 +196,12 @@ const RoomManager = () => {
               <>
                 {showBulk ? (
                   <div className="space-y-4">
-                    <BulkUploadZone 
-                      type="Rooms" 
-                      onUpload={handleBulkUpload} 
-                    />
+                    <BulkUploadZone type="Rooms" onUpload={handleBulkUpload} />
                     <button
                       onClick={downloadTemplate}
-                      className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 text-[10px] font-bold uppercase rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-all"
+                      className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 text-[10px] font-bold uppercase rounded-lg flex items-center justify-center gap-2"
                     >
-                      <Download size={14} /> Download Template
+                      <Download size={14} /> Template
                     </button>
                   </div>
                 ) : (
@@ -216,7 +209,7 @@ const RoomManager = () => {
                     <input
                       value={newRoom.roomNumber}
                       onChange={(e) => setNewRoom({ ...newRoom, roomNumber: e.target.value.toUpperCase() })}
-                      placeholder="Room Number (e.g. A101)"
+                      placeholder="Room Number"
                       className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     <select
@@ -242,19 +235,17 @@ const RoomManager = () => {
                         className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
                       />
                     </div>
-                    <button onClick={handleAddRoom} className="w-full py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition-colors">
+                    <button onClick={handleAddRoom} className="w-full py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600">
                       Add to List
                     </button>
                   </div>
                 )}
               </>
             )}
-            
-            {isLocked && <p className="text-sm text-gray-500 italic mt-4">Configuration is locked as data is already saved in the system.</p>}
+            {isLocked && <p className="text-sm text-gray-500 italic mt-4">Configuration is locked.</p>}
           </div>
         </div>
 
-        {/* LIST SECTION */}
         <div className="lg:col-span-2 flex flex-col h-full">
           <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex-1">
              <div className="overflow-x-auto max-h-[550px] custom-scrollbar">
@@ -271,7 +262,7 @@ const RoomManager = () => {
                   {rooms.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="px-6 py-12 text-center text-gray-400 italic text-sm">
-                        No rooms added. Use manual entry or Excel import.
+                        No rooms added yet.
                       </td>
                     </tr>
                   ) : (
@@ -282,19 +273,19 @@ const RoomManager = () => {
                         <td className="px-6 py-4 text-center font-mono">{room.capacity}</td>
                         <td className="px-6 py-4 text-right">
                           {!isLocked && (
-                            <button onClick={() => removeRoom(room.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <button onClick={() => removeRoom(room.id)} className="text-gray-400 hover:text-red-500">
                               <Trash2 size={16} />
                             </button>
                           )}
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Navigation */}
           <div className="flex justify-between items-center mt-8">
             <button
               onClick={() => handleNavigate("prev")}
